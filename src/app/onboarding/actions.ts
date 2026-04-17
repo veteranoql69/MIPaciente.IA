@@ -7,6 +7,7 @@ import { z } from 'zod'
 const onboardingSchema = z.object({
   empresa_id: z.uuid({ error: 'Selecciona una clínica válida' }),
   nombre_completo: z.string().min(2, 'Mínimo 2 caracteres').max(100, 'Máximo 100 caracteres').trim(),
+  rol: z.enum(['medico', 'asistente'], { error: 'Selecciona un rol válido' }),
 })
 
 export async function getEmpresasActivas() {
@@ -26,6 +27,7 @@ export async function completeOnboarding(_: unknown, formData: FormData) {
   const parsed = onboardingSchema.safeParse({
     empresa_id: formData.get('empresa_id'),
     nombre_completo: formData.get('nombre_completo'),
+    rol: formData.get('rol'),
   })
 
   if (!parsed.success) {
@@ -39,18 +41,17 @@ export async function completeOnboarding(_: unknown, formData: FormData) {
     return { error: 'Sesión expirada. Por favor vuelve a iniciar sesión.' }
   }
 
-  // Try update first (profile row exists via auth trigger)
   const { error: updateError } = await supabase
     .from('mpaci_usuarios')
     .update({
       nombre_completo: parsed.data.nombre_completo,
       empresa_id: parsed.data.empresa_id,
+      rol: parsed.data.rol,
       onboarding_completado: true,
     })
     .eq('id', user.id)
 
   if (updateError) {
-    // Profile row doesn't exist yet — insert it
     const { error: insertError } = await supabase
       .from('mpaci_usuarios')
       .insert({
@@ -58,8 +59,8 @@ export async function completeOnboarding(_: unknown, formData: FormData) {
         email: user.email ?? '',
         nombre_completo: parsed.data.nombre_completo,
         empresa_id: parsed.data.empresa_id,
+        rol: parsed.data.rol,
         onboarding_completado: true,
-        rol: 'asistente',
       })
 
     if (insertError) {
