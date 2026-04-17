@@ -10,7 +10,7 @@ You are an expert AI coding assistant helping build "Mi-Paciente.com". This is N
 
 Do not suggest or install libraries outside this stack without explicit permission:
 
-- **Core Framework:** Next.js 18 (App Router, Server Actions).
+- **Core Framework:** Next.js 16.2.3 (App Router, Server Actions) with React 19.2.4.
 - **UI & Styling:** Tailwind CSS, `shadcn/ui` (for components), `@dnd-kit/core` (for drag & drop).
 - **Backend & Database:** Supabase Self-Hosted (PostgreSQL, Auth, Storage, Realtime enabled).
 - **AI Orchestration:** Vercel AI SDK (`ai`, `@ai-sdk/google` using Gemini).

@@ -5,7 +5,6 @@
 You are an expert AI coding assistant helping build "Mi-Paciente.com". This is NOT a standard CRUD app; it is an AI-Native system integrating a CRM, Agenda, and Clinical Record.
 
 - **Core Objective:** The AI acts as a conversion engine. It reads the conversation, the CRM state, and the Agenda to guide the patient toward surgery.
-- **Global Skills Link:** ALWAYS inherit baseline rules from: `C:\Users\siste\Documents\Antigravity_project\manmec\.aiskills`
 
 ## 2. The "Golden Stack" (STRICT COMPLIANCE)
 
@@ -24,22 +23,23 @@ Do not suggest or install libraries outside this stack without explicit permissi
 The codebase follows Domain-Driven Design (DDD). The `src/app` folder is strictly for routing. ALL business logic lives inside `src/modules/`.
 **Module Boundaries (Never mix these):**
 
-- `/src/modules/crm`: Handles `prospectos_crm`. (Human management, funnel states).
-- `/src/modules/agenda`: Handles `citas_agenda`, `servicios_clinicos` (Pricing, GiST exclusion constraints, Realtime blocks).
-- `/src/modules/ficha-clinica`: Handles `fichas_clinicas` (Clinical data, Stirling PDF API calls).
-- `/src/modules/ai-agent`: Handles `contactos_ia`, Vercel AI SDK Tools, Prompts, and Langfuse telemetry.
+- `/src/modules/crm`: Handles `mpaci_prospectos`. (Human management, funnel states).
+- `/src/modules/agenda`: Handles `mpaci_citas`, `mpaci_servicios` (Pricing, GiST exclusion constraints, Realtime blocks).
+- `/src/modules/ficha-clinica`: Handles `mpaci_fichas_clinicas` (Clinical data, Stirling PDF API calls).
+- `/src/modules/ai-agent`: Handles `mpaci_contactos`, Vercel AI SDK Tools, Prompts, and Langfuse telemetry.
 
 ## 4. Core Business Rules (CRITICAL)
 
 When writing SQL, Server Actions, or AI Tools, you MUST enforce these rules:
 
-1. **Contacto vs. Prospecto:** `contactos_ia` is for AI-only interactions. It only becomes a `prospecto_crm` when human intervention is needed or high intent is validated.
+1. **Contacto vs. Prospecto:** `mpaci_contactos` is for AI-only interactions. It only becomes a `mpaci_prospectos` when human intervention is needed or high intent is validated.
 2. **Agenda is the Source of Truth:** The Agenda module handles all pricing and double-booking prevention natively via PostgreSQL `EXCLUDE USING gist`. The CRM does NOT handle money.
 3. **Ficha Clínica Immutability:** A clinical record locks automatically 24 hours after creation. Subsequent changes must be append-only annotations.
 4. **PDF Generation Delegation:** To generate medical documents, format the data in the Server Action and send a payload to the Stirling PDF API. Store the returned buffer in Supabase Storage.
 
 ## 5. Coding Standards & Vibe Coding Workflow
 
+- **Table Naming Convention (MANDATORY):** ALL database tables MUST use the prefix `mpaci_` (e.g. `mpaci_usuarios`, `mpaci_contactos`, `mpaci_citas`). This applies to every CREATE TABLE, reference, policy, and query. Never create a table without this prefix.
 - **Types:** Always use the generated types from Supabase (`database.types.ts`). Do not manually interface DB tables.
 - **Server Actions:** All mutations must happen in Server Actions, wrapped in try/catch blocks, and validate input using Zod.
 - **Granular Components:** When generating UI, use small, reusable `shadcn/ui` components.

@@ -4,7 +4,7 @@
 **Fecha:** 16 Abril 2026
 **Deadline:** 6 meses inamovibles (180 días). Early adopters en producción al finalizar.
 **Branch:** master
-**Stack:** Next.js 18 App Router · Supabase Self-Hosted · Tailwind + shadcn/ui · Vercel AI SDK (Gemini) · Langfuse · Stirling PDF · Docker
+**Stack:** Next.js 16.2.3 App Router (React 19.2.4) · Supabase Self-Hosted · Tailwind + shadcn/ui · Vercel AI SDK (Gemini) · Langfuse · Stirling PDF · Docker
 
 ---
 
@@ -72,7 +72,7 @@
 
 ```
 src/
-├── middleware.ts                          ← PRIMERO: valida slug + gate onboarding
+├── proxy.ts                               ← PRIMERO: valida slug + gate onboarding (Next.js 16 proxy convention)
 ├── app/
 │   ├── unauthorized/page.tsx             ← slug no coincide con empresa del usuario
 │   ├── onboarding/page.tsx               ← wizard 3 pasos
@@ -86,7 +86,7 @@ src/
 ### Lógica Middleware
 
 ```typescript
-// Flujo src/middleware.ts:
+// Flujo src/proxy.ts (Next.js 16 proxy convention):
 // 1. Ruta pública (/login, /auth/*, /unauthorized) → pasar
 // 2. No autenticado → redirigir a /login
 // 3. onboarding_completado = false → redirigir a /onboarding
@@ -125,21 +125,6 @@ src/
 
 **Días 31-45 · DB: ⏳ · Frontend: ⏳**
 
-### DB Pendiente
-
-| Migración | Descripción |
-|-----------|-------------|
-| `00018_precio_contrato.sql` | Documenta contrato precio_base vs mpaci_servicios_precios |
-
-```sql
--- 00018: formalizar contrato precio_base = fallback cuando no hay cobertura específica
-COMMENT ON COLUMN public.mpaci_servicios.precio_base IS
-    'Precio fallback cuando no existe precio en mpaci_servicios_precios para la cobertura del paciente.
-     La Server Action debe buscar primero en mpaci_servicios_precios; si no encuentra, usar este campo.
-     Siempre debe tener un valor (NOT NULL).';
-
-ALTER TABLE public.mpaci_servicios ALTER COLUMN precio_base SET NOT NULL;
-```
 
 ### Frontend Pendiente
 
@@ -216,20 +201,6 @@ src/app/[empresa_slug]/
 | `00016_citas_prospecto_link.sql` | Agrega prospecto_id nullable a mpaci_citas + índice |
 | `00017_canal_origen_deprecate.sql` | Backfill canal_origen → canal_contacto + deprecation comment |
 
-```sql
--- 00016: link directo CRM-Agenda para queries eficientes
-ALTER TABLE public.mpaci_citas
-    ADD COLUMN IF NOT EXISTS prospecto_id UUID REFERENCES public.mpaci_prospectos(id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_mpaci_citas_prospecto ON public.mpaci_citas(prospecto_id);
-
--- 00017: limpiar ambigüedad canal_origen vs canal_contacto
-UPDATE public.mpaci_contactos
-SET canal_contacto = canal_origen
-WHERE canal_contacto IS NULL AND canal_origen IS NOT NULL;
-COMMENT ON COLUMN public.mpaci_contactos.canal_origen IS
-    'DEPRECATED desde Sprint 5. Usar canal_contacto. Mantener hasta eliminar referencias en código.';
-```
-
 ### Frontend Pendiente
 
 ```
@@ -295,20 +266,7 @@ Server Action → formatea datos → POST Stirling PDF API → recibe buffer →
 
 ### DB Pendiente
 
-```sql
--- Nueva tabla para mensajes entrantes antes de convertirse en contactos
-CREATE TABLE mpaci_mensajes_entrantes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    empresa_id UUID NOT NULL REFERENCES mpaci_empresas(id),
-    canal TEXT NOT NULL,           -- 'whatsapp', 'instagram', 'formulario_web'
-    remitente TEXT NOT NULL,       -- número WA, usuario IG, email
-    contenido TEXT NOT NULL,
-    metadata JSONB,                -- payload crudo del webhook
-    procesado BOOLEAN DEFAULT false,
-    contacto_id UUID REFERENCES mpaci_contactos(id),
-    creado_en TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
-);
-```
+(Migración `00020_mensajes_entrantes.sql` creada para manejar mensajes entrantes antes de convertirse en contactos)
 
 ### Frontend + Backend Pendiente
 
@@ -513,10 +471,10 @@ Fuente: https://elements.ai-sdk.dev — construido sobre shadcn/ui.
 
 | Sprint | Migración | Gap | Estado |
 |--------|-----------|-----|--------|
-| S3 | `00018_precio_contrato.sql` | Documenta contrato precio_base | ⏳ |
-| S5 | `00016_citas_prospecto_link.sql` | FK prospecto_id en mpaci_citas | ⏳ |
-| S5 | `00017_canal_origen_deprecate.sql` | Backfill + deprecation canal_origen | ⏳ |
-| S7 | `00020_mensajes_entrantes.sql` | Tabla mpaci_mensajes_entrantes | ⏳ |
+| S3 | `00018_precio_contrato.sql` | Documenta contrato precio_base | ✅ Archivo |
+| S5 | `00016_citas_prospecto_link.sql` | FK prospecto_id en mpaci_citas | ✅ Archivo |
+| S5 | `00017_canal_origen_deprecate.sql` | Backfill + deprecation canal_origen | ✅ Archivo |
+| S7 | `00020_mensajes_entrantes.sql` | Tabla mpaci_mensajes_entrantes | ✅ Archivo |
 
 ---
 
