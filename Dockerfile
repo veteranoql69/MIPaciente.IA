@@ -16,7 +16,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Desactivar telemetría de Next.js durante el build
+# Variables temporales para que Next.js pueda completar el build estático
+ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
