@@ -7,7 +7,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # use lowercase for repository names in GHCR
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -16,6 +15,11 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+    # Declare secrets used in this job so linters can validate context access
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout repository
@@ -48,6 +52,12 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Convert repository name to lowercase for GHCR
+          # NEXT_PUBLIC_* vars are baked into the client JS bundle at build time.
+          # They MUST be injected here — runtime container env vars won't work.
+          # Required secrets in GitHub → Settings → Secrets → Actions:
+          #   NEXT_PUBLIC_SUPABASE_URL
+          #   NEXT_PUBLIC_SUPABASE_ANON_KEY
           build-args: |
-             IMAGE_NAME=${{ env.IMAGE_NAME }}
+            IMAGE_NAME=${{ env.IMAGE_NAME }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
