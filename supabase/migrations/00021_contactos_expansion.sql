@@ -71,14 +71,13 @@ CREATE TRIGGER trg_contactos_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.fn_contactos_updated_at();
 
--- 8. ÍNDICES PARA BÚSQUEDAS FRECUENTES
+-- 8. EXTENSIÓN + ÍNDICES PARA BÚSQUEDAS FRECUENTES
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE INDEX IF NOT EXISTS idx_mpaci_contactos_prevision ON public.mpaci_contactos(prevision);
 CREATE INDEX IF NOT EXISTS idx_mpaci_contactos_comuna ON public.mpaci_contactos(comuna);
 CREATE INDEX IF NOT EXISTS idx_mpaci_contactos_nombre_trgm
     ON public.mpaci_contactos USING gin (nombre gin_trgm_ops);
-
--- Habilitar extensión para búsqueda fuzzy (si no existe)
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 COMMENT ON TABLE public.mpaci_contactos IS
     'Universo completo de personas. Incluye prospectos, pacientes y contactos AI.
