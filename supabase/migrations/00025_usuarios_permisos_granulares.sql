@@ -122,7 +122,7 @@ CREATE POLICY "Admin general gestiona plantillas permisos"
         AND empresa_id = get_my_empresa_id()
         AND EXISTS (
             SELECT 1 FROM public.mpaci_usuarios
-            WHERE id = auth.uid() AND rol = 'admin_general'
+            WHERE id = auth.uid() AND rol::text = 'admin_general'
         )
     );
 
@@ -185,7 +185,7 @@ CREATE POLICY "Admin general ve auditoria permisos"
         AND empresa_id = get_my_empresa_id()
         AND EXISTS (
             SELECT 1 FROM public.mpaci_usuarios
-            WHERE id = auth.uid() AND rol = 'admin_general'
+            WHERE id = auth.uid() AND rol::text = 'admin_general'
         )
     );
 
@@ -196,7 +196,7 @@ CREATE POLICY "Admin general inserta auditoria permisos"
         AND empresa_id = get_my_empresa_id()
         AND EXISTS (
             SELECT 1 FROM public.mpaci_usuarios
-            WHERE id = auth.uid() AND rol = 'admin_general'
+            WHERE id = auth.uid() AND rol::text = 'admin_general'
         )
     );
 
@@ -233,8 +233,8 @@ BEGIN
     FROM public.mpaci_usuarios
     WHERE id = p_user_id;
 
-    -- admin_general tiene todos los permisos
-    IF v_user_rol = 'admin_general' THEN
+    -- admin_general tiene todos los permisos (casteo a text para evitar error transaccional de enum nuevo)
+    IF v_user_rol::text = 'admin_general' THEN
         RETURN true;
     END IF;
 
