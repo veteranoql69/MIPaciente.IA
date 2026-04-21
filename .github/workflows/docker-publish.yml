@@ -61,3 +61,4 @@ jobs:
             IMAGE_NAME=${{ env.IMAGE_NAME }}
             NEXT_PUBLIC_SUPABASE_URL=${{ env.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            GITHUB_SHA=${{ github.sha }}
