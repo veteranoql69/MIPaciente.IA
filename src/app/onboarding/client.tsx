@@ -83,7 +83,16 @@ export default function OnboardingOwnerClient({ firstName, fullName, email }: Pr
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-indigo-50/30">
+    <div className="relative min-h-dvh w-full flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105" style={{ backgroundImage: "url('/images/login-bg.png')" }} />
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" />
+      <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-indigo-500/20 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse" />
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center w-full">
+
       {/* Progress dots */}
       <div className="flex gap-2 mb-8">
         {steps.map((s, i) => (
@@ -343,6 +352,7 @@ export default function OnboardingOwnerClient({ firstName, fullName, email }: Pr
       </div>
 
       <p className="mt-6 text-xs text-slate-400">© {new Date().getFullYear()} Mi-Paciente · Sistema de gestión clínica</p>
+      </div>
     </div>
   )
 }

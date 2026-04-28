@@ -101,4 +101,4 @@ mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
 | **00027–00033** | **Refuerzo: Roles nuevos, checks críticos, honorarios avanzados, snapshots de cita.** |
 | **00034–00037** | **Disponibilidad: Horarios recurrentes (prestador), pausas, excepciones, procedimientos.** |
 | **00038–00041** | **Operación: Recursos sede, notas agenda, bloque base configurable, catálogos CIE-10/Med.** |
-| **00042–00046** | **Optimización: Reasignaciones CRM, marketing (fuentes/campañas), sistema de invitaciones.** |
+| **00042–00047** | **Optimización: Reasignaciones CRM, marketing (fuentes/campañas), sistema de invitaciones y fix de recursión RLS.** |

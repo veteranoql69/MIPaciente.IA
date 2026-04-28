@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mi-Paciente.com (Urbamed) - AI-Native CRM & Agenda
 
-## Getting Started
+Bienvenido al repositorio central de **Mi-Paciente.com**, un sistema AI-Native diseñado para la gestión clínica integral (CRM, Agenda y Ficha Clínica).
 
-First, run the development server:
+## 🚀 Estado del Proyecto
+Actualmente hemos completado la **Infraestructura Base** y el **Sistema Multi-Tenant con Onboarding**.
+
+- **Sprint 1 (Completado):** Base de datos, Auth, Perfiles y Agenda core.
+- **Sprint 2 (Completado):** Aislamiento Multi-Tenant (RLS), Onboarding de Clínicas, Invitaciones de Equipo (Resend).
+- **Sprint 3 (En Curso):** Módulo de Agenda Avanzada y Gestión de Disponibilidad.
+
+## 📚 Documentación Técnica (Wiki)
+Para entender la arquitectura y las reglas de negocio, consulta los siguientes documentos:
+
+1. [Esquema de Base de Datos](doc/02_database_schema.md) - Estructura de tablas y relaciones.
+2. [Arquitectura de Seguridad (RLS)](doc/05_arquitectura_seguridad.md) - Cómo aislamos los datos y evitamos recursión.
+3. [Módulo de Onboarding e Invitaciones](doc/06_onboarding_invitaciones.md) - Flujo de registro de nuevas clínicas.
+4. [Roadmap de Sprints](doc/04_sprint_roadmap.md) - Seguimiento detallado del progreso.
+
+## 🛠️ Stack Tecnológico
+- **Frontend:** Next.js 15 (App Router), Tailwind CSS, shadcn/ui.
+- **Backend:** Supabase (PostgreSQL + Auth + Storage).
+- **Email:** Resend.
+- **AI:** Vercel AI SDK + Gemini.
+
+## 💻 Desarrollo Local
 
 ```bash
+# Instalar dependencias
+npm install
+
+# Levantar servidor de desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+El proyecto utiliza un sistema de **Proxy de Rutas** (`src/proxy.ts`) para manejar el aislamiento por `empresa_slug`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🛡️ Seguridad
+Todas las tablas deben seguir la convención de nomenclatura `mpaci_` y tener habilitado **RLS**. Consulta [Arquitectura de Seguridad](doc/05_arquitectura_seguridad.md) antes de crear nuevas políticas.

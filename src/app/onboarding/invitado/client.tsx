@@ -51,7 +51,15 @@ export default function InvitadoClient({ invitacionId, empresaNombre, rol }: Pro
   const isComplete = codigo.length === 6
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-indigo-50/30">
+    <div className="relative min-h-dvh w-full flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105" style={{ backgroundImage: "url('/images/login-bg.png')" }} />
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" />
+      <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-indigo-500/20 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse" />
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center w-full">
       <div className="w-full max-w-md bg-white/80 backdrop-blur-md rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-200/60 overflow-hidden">
         <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-8 py-6 text-center shadow-sm">
           <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest mb-1">Mi-Paciente</p>
@@ -116,6 +124,7 @@ export default function InvitadoClient({ invitacionId, empresaNombre, rol }: Pro
       </div>
 
       <p className="mt-6 text-xs text-slate-400">© {new Date().getFullYear()} Mi-Paciente · Sistema de gestión clínica</p>
+      </div>
     </div>
   )
 }

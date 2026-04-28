@@ -13,7 +13,7 @@
 | Sprint | Período | Nombre | DB | Frontend | Estado |
 |--------|---------|--------|----|---------|----|
 | S1 | Días 1-15 | Infraestructura Base | ✅ | ✅ | **COMPLETADO** |
-| S2 | Días 16-30 | Multi-Tenant + Auth + Onboarding | ✅ | ⏳ | **DB lista, frontend pendiente** |
+| S2 | Días 16-30 | Multi-Tenant + Auth + Onboarding | ✅ | ✅ | **COMPLETADO** |
 | S3 | Días 31-45 | Módulo Agenda Parte 1 | ⏳ | ⏳ | Pendiente |
 | S4 | Días 46-60 | Módulo Agenda Parte 2 + Vista Integrada | — | ⏳ | Pendiente |
 | S5 | Días 61-75 | CRM Base | ⏳ | ⏳ | Pendiente |
@@ -49,8 +49,8 @@
 
 ## Sprint 2 — Multi-Tenant + Auth + Onboarding
 
-**DB: ✅ COMPLETA** (migraciones 00007-00015 + 00019 aplicadas)
-**Frontend: ⏳ PENDIENTE**
+**DB: ✅ COMPLETA** (migraciones 00007-00015 + 00019 + 00047 aplicadas)
+**Frontend: ✅ LISTO**
 
 ### DB Aplicada
 
