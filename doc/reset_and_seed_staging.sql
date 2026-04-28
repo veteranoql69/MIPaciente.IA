@@ -30,105 +30,50 @@ END $$;
 -- PASO 1 — HARD RESET (borra todos los datos de negocio)
 --          Incluye las nuevas tablas de permisos (00048)
 -- ============================================================
+-- TRUNCATE CASCADE elimina todos los datos ignorando el orden de FKs.
+-- Solo trunca tablas que existen (seguro ante migraciones pendientes).
 DO $$
 DECLARE
-    r RECORD;
+    v_tables TEXT[];
+    v_existing TEXT;
 BEGIN
-    SET CONSTRAINTS ALL DEFERRED;
+    v_tables := ARRAY[
+        'mpaci_auditoria_citas', 'mpaci_pagos_cita', 'mpaci_equipo_cita',
+        'mpaci_cita_pacientes', 'mpaci_cita_procedimientos',
+        'mpaci_anotaciones_clinicas', 'mpaci_registros_clinicos', 'mpaci_documentos',
+        'mpaci_bitacora', 'mpaci_reasignaciones', 'mpaci_tableros_reportes',
+        'mpaci_servicios_config_recursos', 'mpaci_auditoria_permisos',
+        'mpaci_citas', 'mpaci_fichas_clinicas', 'mpaci_actividades',
+        'mpaci_timeline_eventos', 'mpaci_mensajes_entrantes',
+        'mpaci_diagnosticos', 'mpaci_medicamentos_paciente',
+        'mpaci_alergias', 'mpaci_cirugias_externas',
+        'mpaci_reportes', 'mpaci_tableros', 'mpaci_permisos_tablero',
+        'mpaci_prospectos', 'mpaci_campanas', 'mpaci_fuentes_lead',
+        'mpaci_permisos_usuario', 'mpaci_asignaciones_medico',
+        'mpaci_servicios_config', 'mpaci_servicios_precios', 'mpaci_servicios',
+        'mpaci_horarios_excepciones', 'mpaci_horarios_pausas', 'mpaci_horarios_prestador',
+        'mpaci_honorarios_bloque', 'mpaci_bloques_horarios', 'mpaci_notas_agenda',
+        'mpaci_insumos', 'mpaci_equipamiento', 'mpaci_salas',
+        'mpaci_frases_rapidas',
+        'mpaci_plantillas_clinicas_versiones', 'mpaci_plantillas_clinicas',
+        'mpaci_plantillas_permisos', 'mpaci_invitaciones',
+        'mpaci_sucursales', 'mpaci_contactos', 'mpaci_usuarios',
+        'mpaci_catalogo_cie10', 'mpaci_catalogo_medicamentos', 'mpaci_empresas'
+    ];
 
-    FOR r IN (
-        SELECT tablename
-        FROM pg_tables
-        WHERE schemaname = 'public'
-        AND tablename IN (
-            -- Nivel 1: hijos y logs
-            'mpaci_auditoria_citas', 'mpaci_pagos_cita', 'mpaci_equipo_cita',
-            'mpaci_cita_pacientes', 'mpaci_cita_procedimientos',
-            'mpaci_anotaciones_clinicas', 'mpaci_registros_clinicos', 'mpaci_documentos',
-            'mpaci_bitacora', 'mpaci_reasignaciones', 'mpaci_tableros_reportes',
-            'mpaci_servicios_config_recursos', 'mpaci_auditoria_permisos',
-            -- Nivel 2: transaccionales
-            'mpaci_citas', 'mpaci_fichas_clinicas', 'mpaci_actividades',
-            'mpaci_timeline_eventos', 'mpaci_mensajes_entrantes',
-            'mpaci_diagnosticos', 'mpaci_medicamentos_paciente',
-            'mpaci_alergias', 'mpaci_cirugias_externas',
-            'mpaci_reportes', 'mpaci_tableros', 'mpaci_permisos_tablero',
-            -- Nivel 3: CRM
-            'mpaci_prospectos', 'mpaci_campanas', 'mpaci_fuentes_lead',
-            -- Nivel 4: config y agenda
-            'mpaci_permisos_usuario', 'mpaci_asignaciones_medico',
-            'mpaci_servicios_config', 'mpaci_servicios_precios', 'mpaci_servicios',
-            'mpaci_horarios_excepciones', 'mpaci_horarios_pausas', 'mpaci_horarios_prestador',
-            'mpaci_honorarios_bloque', 'mpaci_bloques_horarios', 'mpaci_notas_agenda',
-            'mpaci_insumos', 'mpaci_equipamiento', 'mpaci_salas',
-            'mpaci_frases_rapidas',
-            'mpaci_plantillas_clinicas_versiones', 'mpaci_plantillas_clinicas',
-            'mpaci_plantillas_permisos',
-            'mpaci_invitaciones',
-            -- Nivel 5: base
-            'mpaci_sucursales', 'mpaci_contactos', 'mpaci_usuarios',
-            -- Nivel 6: raíz
-            'mpaci_catalogo_cie10', 'mpaci_catalogo_medicamentos',
-            'mpaci_empresas'
-        )
-        ORDER BY CASE tablename
-            WHEN 'mpaci_auditoria_citas'          THEN 10
-            WHEN 'mpaci_pagos_cita'               THEN 10
-            WHEN 'mpaci_equipo_cita'              THEN 10
-            WHEN 'mpaci_cita_pacientes'           THEN 10
-            WHEN 'mpaci_cita_procedimientos'      THEN 10
-            WHEN 'mpaci_anotaciones_clinicas'     THEN 10
-            WHEN 'mpaci_registros_clinicos'       THEN 10
-            WHEN 'mpaci_bitacora'                 THEN 10
-            WHEN 'mpaci_tableros_reportes'        THEN 10
-            WHEN 'mpaci_servicios_config_recursos'THEN 10
-            WHEN 'mpaci_auditoria_permisos'       THEN 10
-            WHEN 'mpaci_citas'                    THEN 20
-            WHEN 'mpaci_fichas_clinicas'          THEN 20
-            WHEN 'mpaci_actividades'              THEN 20
-            WHEN 'mpaci_timeline_eventos'         THEN 20
-            WHEN 'mpaci_mensajes_entrantes'       THEN 20
-            WHEN 'mpaci_diagnosticos'             THEN 20
-            WHEN 'mpaci_medicamentos_paciente'    THEN 20
-            WHEN 'mpaci_alergias'                 THEN 20
-            WHEN 'mpaci_cirugias_externas'        THEN 20
-            WHEN 'mpaci_reasignaciones'           THEN 20
-            WHEN 'mpaci_prospectos'               THEN 30
-            WHEN 'mpaci_campanas'                 THEN 30
-            WHEN 'mpaci_fuentes_lead'             THEN 30
-            WHEN 'mpaci_permisos_usuario'         THEN 35
-            WHEN 'mpaci_asignaciones_medico'      THEN 35
-            WHEN 'mpaci_servicios_config'         THEN 40
-            WHEN 'mpaci_servicios_precios'        THEN 40
-            WHEN 'mpaci_servicios'                THEN 45
-            WHEN 'mpaci_horarios_excepciones'     THEN 40
-            WHEN 'mpaci_horarios_pausas'          THEN 40
-            WHEN 'mpaci_horarios_prestador'       THEN 40
-            WHEN 'mpaci_honorarios_bloque'        THEN 40
-            WHEN 'mpaci_bloques_horarios'         THEN 40
-            WHEN 'mpaci_notas_agenda'             THEN 40
-            WHEN 'mpaci_insumos'                  THEN 40
-            WHEN 'mpaci_equipamiento'             THEN 40
-            WHEN 'mpaci_salas'                    THEN 40
-            WHEN 'mpaci_frases_rapidas'           THEN 40
-            WHEN 'mpaci_plantillas_clinicas'      THEN 40
-            WHEN 'mpaci_plantillas_clinicas_versiones' THEN 40
-            WHEN 'mpaci_plantillas_permisos'      THEN 40
-            WHEN 'mpaci_invitaciones'             THEN 40
-            WHEN 'mpaci_sucursales'               THEN 50
-            WHEN 'mpaci_contactos'                THEN 50
-            WHEN 'mpaci_usuarios'                 THEN 60
-            WHEN 'mpaci_catalogo_cie10'           THEN 90
-            WHEN 'mpaci_catalogo_medicamentos'    THEN 90
-            WHEN 'mpaci_empresas'                 THEN 100
-            ELSE 80
-        END ASC
-    ) LOOP
-        EXECUTE format('DELETE FROM public.%I', r.tablename);
-        RAISE NOTICE 'Tabla borrada: %', r.tablename;
-    END LOOP;
+    SELECT string_agg('public.' || quote_ident(t), ', ')
+    INTO v_existing
+    FROM unnest(v_tables) AS t
+    WHERE EXISTS (
+        SELECT 1 FROM pg_tables
+        WHERE schemaname = 'public' AND tablename = t
+    );
 
-    RAISE NOTICE '✓ Hard reset completado.';
+    IF v_existing IS NOT NULL THEN
+        EXECUTE 'TRUNCATE TABLE ' || v_existing || ' CASCADE';
+    END IF;
+
+    RAISE NOTICE '✓ Hard reset completado (TRUNCATE CASCADE).';
 END $$;
 
 -- ============================================================
