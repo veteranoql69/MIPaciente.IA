@@ -1028,6 +1028,77 @@ export interface Database {
         }
         Relationships: []
       }
+      mpaci_permisos_usuario: {
+        Row: {
+          id: string
+          empresa_id: string
+          usuario_id: string
+          modulo: 'agenda' | 'crm' | 'ficha_clinica' | 'estadisticas' | 'configuracion' | 'integraciones'
+          permiso: string
+          activo: boolean
+          otorgado_por: string | null
+          otorgado_en: string
+        }
+        Insert: {
+          id?: string
+          empresa_id: string
+          usuario_id: string
+          modulo: 'agenda' | 'crm' | 'ficha_clinica' | 'estadisticas' | 'configuracion' | 'integraciones'
+          permiso: string
+          activo?: boolean
+          otorgado_por?: string | null
+          otorgado_en?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string
+          usuario_id?: string
+          modulo?: 'agenda' | 'crm' | 'ficha_clinica' | 'estadisticas' | 'configuracion' | 'integraciones'
+          permiso?: string
+          activo?: boolean
+          otorgado_por?: string | null
+          otorgado_en?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'mpaci_permisos_usuario_empresa_id_fkey'; columns: ['empresa_id']; referencedRelation: 'mpaci_empresas'; referencedColumns: ['id'] },
+          { foreignKeyName: 'mpaci_permisos_usuario_usuario_id_fkey'; columns: ['usuario_id']; referencedRelation: 'mpaci_usuarios'; referencedColumns: ['id'] },
+          { foreignKeyName: 'mpaci_permisos_usuario_otorgado_por_fkey'; columns: ['otorgado_por']; referencedRelation: 'mpaci_usuarios'; referencedColumns: ['id'] }
+        ]
+      }
+      mpaci_asignaciones_medico: {
+        Row: {
+          id: string
+          empresa_id: string
+          asistente_id: string
+          medico_id: string
+          activo: boolean
+          creado_por: string | null
+          creado_en: string
+        }
+        Insert: {
+          id?: string
+          empresa_id: string
+          asistente_id: string
+          medico_id: string
+          activo?: boolean
+          creado_por?: string | null
+          creado_en?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string
+          asistente_id?: string
+          medico_id?: string
+          activo?: boolean
+          creado_por?: string | null
+          creado_en?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'mpaci_asignaciones_medico_empresa_id_fkey'; columns: ['empresa_id']; referencedRelation: 'mpaci_empresas'; referencedColumns: ['id'] },
+          { foreignKeyName: 'mpaci_asignaciones_medico_asistente_id_fkey'; columns: ['asistente_id']; referencedRelation: 'mpaci_usuarios'; referencedColumns: ['id'] },
+          { foreignKeyName: 'mpaci_asignaciones_medico_medico_id_fkey'; columns: ['medico_id']; referencedRelation: 'mpaci_usuarios'; referencedColumns: ['id'] }
+        ]
+      }
       mpaci_pagos_cita: {
         Row: {
           id: string
