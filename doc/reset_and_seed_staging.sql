@@ -121,7 +121,12 @@ BEGIN
     VALUES
         (v_user_id, v_email, v_nombre,
          'd837f400-60b5-4b53-b0df-2b9a71b12345',
-         'admin_general', true);
+         'admin_general', true)
+    ON CONFLICT (id) DO UPDATE SET
+        nombre_completo       = EXCLUDED.nombre_completo,
+        empresa_id            = EXCLUDED.empresa_id,
+        rol                   = EXCLUDED.rol,
+        onboarding_completado = EXCLUDED.onboarding_completado;
 
     -- Sembrar permisos completos de admin_general
     PERFORM public.seed_permisos_por_rol(
@@ -170,6 +175,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
 -- PASO 5 — Perfiles de staging en mpaci_usuarios
+-- ON CONFLICT DO UPDATE: el trigger handle_new_user() puede crear filas vacías
+-- cuando PASO 4 inserta en auth.users; el UPSERT las completa correctamente.
 -- ============================================================
 INSERT INTO public.mpaci_usuarios
     (id, email, nombre_completo, empresa_id, rol, onboarding_completado)
@@ -190,7 +197,13 @@ VALUES
      'Catalina Pérez', 'd837f400-60b5-4b53-b0df-2b9a71b12345', 'asistente', true),
 
     ('b2000000-0000-0000-0000-000000000006', 'enfermera.soto@staging.test',
-     'Patricia Soto', 'd837f400-60b5-4b53-b0df-2b9a71b12345', 'enfermera_tens', true);
+     'Patricia Soto', 'd837f400-60b5-4b53-b0df-2b9a71b12345', 'enfermera_tens', true)
+ON CONFLICT (id) DO UPDATE SET
+    email                 = EXCLUDED.email,
+    nombre_completo       = EXCLUDED.nombre_completo,
+    empresa_id            = EXCLUDED.empresa_id,
+    rol                   = EXCLUDED.rol,
+    onboarding_completado = EXCLUDED.onboarding_completado;
 
 -- Sembrar permisos para todos los usuarios de staging
 SELECT public.seed_permisos_por_rol(id, empresa_id, rol::app_role, NULL)
