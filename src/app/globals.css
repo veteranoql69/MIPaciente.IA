@@ -49,40 +49,40 @@
 }
 
 :root {
-  /* Medical Clinic palette — Mi-Paciente */
-  --background: oklch(0.984 0.024 180);      /* #F0FDFA teal-50 */
-  --foreground: oklch(0.318 0.055 186);      /* #134E4A teal-900 */
-  --card: oklch(1 0 0);                      /* #FFFFFF white */
-  --card-foreground: oklch(0.318 0.055 186);
+  /* Mi-Paciente Indigo Design System - Stitch Inspired */
+  --background: oklch(0.984 0.005 285);      /* #F8FAFC slate-50/50 */
+  --foreground: oklch(0.208 0.042 265);      /* #0F172A slate-900 */
+  --card: oklch(1 0 0 / 80%);                /* Glassmorphism base */
+  --card-foreground: oklch(0.208 0.042 265);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.318 0.055 186);
-  --primary: oklch(0.589 0.158 215);         /* #0891B2 cyan-600 */
+  --popover-foreground: oklch(0.208 0.042 265);
+  --primary: oklch(0.511 0.262 276.966);     /* #4f46e5 indigo-600 */
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.956 0.049 211);       /* #CFFAFE cyan-100 */
-  --secondary-foreground: oklch(0.589 0.158 215);
-  --muted: oklch(0.956 0.019 213);           /* #E8F1F6 muted surface */
+  --secondary: oklch(0.967 0.011 264);       /* #F1F5F9 slate-100 */
+  --secondary-foreground: oklch(0.398 0.07 257); /* #475569 slate-600 */
+  --muted: oklch(0.967 0.011 264);
   --muted-foreground: oklch(0.554 0.026 253);/* #64748B slate-500 */
-  --accent: oklch(0.553 0.165 145);          /* #16A34A green-600 */
+  --accent: oklch(0.511 0.262 276.966);
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.577 0.245 27.325);  /* #DC2626 red-600 */
-  --border: oklch(0.953 0.051 180);          /* #CCFBF1 teal-100 */
-  --input: oklch(0.922 0.015 213);           /* slightly darker border for inputs */
-  --ring: oklch(0.589 0.158 215);            /* primary teal */
-  --chart-1: oklch(0.589 0.158 215);         /* teal */
-  --chart-2: oklch(0.553 0.165 145);         /* green */
-  --chart-3: oklch(0.789 0.154 211);         /* cyan-400 */
-  --chart-4: oklch(0.7 0.12 175);            /* teal-mid */
-  --chart-5: oklch(0.577 0.245 27.325);      /* red */
-  --radius: 0.625rem;
-  /* Sidebar — light theme with teal accents */
+  --border: oklch(0.922 0.015 255 / 60%);    /* #E2E8F0 slate-200 with transparency */
+  --input: oklch(0.922 0.015 255);
+  --ring: oklch(0.511 0.262 276.966);        /* primary indigo */
+  --chart-1: oklch(0.511 0.262 276.966);
+  --chart-2: oklch(0.553 0.165 145);
+  --chart-3: oklch(0.789 0.154 211);
+  --chart-4: oklch(0.7 0.12 175);
+  --chart-5: oklch(0.577 0.245 27.325);
+  --radius: 0.75rem;
+  /* Sidebar */
   --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.318 0.055 186);
-  --sidebar-primary: oklch(0.589 0.158 215);
+  --sidebar-foreground: oklch(0.208 0.042 265);
+  --sidebar-primary: oklch(0.511 0.262 276.966);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.984 0.024 180);
-  --sidebar-accent-foreground: oklch(0.589 0.158 215);
-  --sidebar-border: oklch(0.953 0.051 180);
-  --sidebar-ring: oklch(0.589 0.158 215);
+  --sidebar-accent: oklch(0.967 0.011 264);
+  --sidebar-accent-foreground: oklch(0.511 0.262 276.966);
+  --sidebar-border: oklch(0.922 0.015 255);
+  --sidebar-ring: oklch(0.511 0.262 276.966);
 }
 
 .dark {

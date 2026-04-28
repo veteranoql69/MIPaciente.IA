@@ -2,8 +2,8 @@ version: "3.7"
 
 services:
   urbamed-app:
-    # Sustituir con la ruta real de tu imagen (ghcr.io/usuario/repo:latest)
-    image: ghcr.io/${GITHUB_REPOSITORY_LOWERCASE:-tu-usuario/urbamed}:latest
+    # Imagen generada automáticamente por GitHub Actions
+    image: ghcr.io/veteranoql69/mipaciente.ia:latest
     networks:
       - DesaNet
 

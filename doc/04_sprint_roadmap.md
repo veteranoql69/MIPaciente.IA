@@ -8,7 +8,7 @@ El MVP de **Mi-Paciente.com** sigue un esquema estricto e inamovible de ejecuci�
 |--------|----------------|---------------|----------|----------------|--------|
 | **S1** | Días 1-15 | **Infraestructura Base** | ✅ Listo | ✅ Listo | **COMPLETADO** |
 | **S2** | Días 16-30 | **Multi-Tenant + Auth + Onboarding** | ✅ Listo | ✅ Listo | **COMPLETADO** |
-| **S3** | Días 31-45 | **Agenda (1ra Parte): Disposiciones y DB** | ⏳ Pend. | ⏳ Pend. | Planificación / Pendiente |
+| **S3** | Días 31-45 | **Agenda (1ra Parte): Disposiciones y DB** | ⏳ Pend. | ⏳ Pend. | **EN CURSO** |
 | **S4** | Días 46-60 | **Agenda (2da Parte): Semanal y Vistas** | — | ⏳ Pend. | Pendiente |
 | **S5** | Días 61-75 | **Kanban y CRM** | ⏳ Pend. | ⏳ Pend. | Pendiente |
 | **S6** | Días 76-90 | **Ficha Clínica y Firma PDFs** | — | ⏳ Pend. | Pendiente |
@@ -22,12 +22,12 @@ El MVP de **Mi-Paciente.com** sigue un esquema estricto e inamovible de ejecuci�
 ## Desglose y Focos Actuales
 
 ### Últimos Logros (Sprint 1 y Sprint 2)
-Se ha completado la creación de las tablas primigenias, perfiles de base para la agenda, sistema CRM subyacente y autenticación OAuth. Adicionalmente, el frontend para el **Multi-Tenancy** ya fue consumado; con un `middleware.ts` maduro que redirige Onboarding y blinda las rutas de `[empresa_slug]`, además de contar con todas las rutas estructuradas en el App Router.
+Se ha consolidado el sistema **Multi-Tenant** y el flujo de **Onboarding**. Se resolvió un problema crítico de recursión infinita en las políticas RLS de `mpaci_usuarios`, permitiendo ahora un acceso fluido y seguro a los dashboards dinámicos según el `empresa_slug`. La autenticación y el sistema de invitaciones (con Resend) ya están operativos y validados.
 
 ### Foco Inmediato: Sprint 3
 * **Objetivo principal:** Módulo Agenda Parte 1.
-* **Base de datos:** Implementar `00018_precio_contrato.sql` para forzar contratos de `precio_base`.
-* **Server Actions:** Crear las primeras integraciones para buscar disponibilidad y precios por coberturas.
+* **Componentes clave:** Implementar la vista diaria de citas, gestión de bloques horarios y validación de disponibilidad.
+* **Base de datos:** Formalizar contratos de precios y coberturas médicas.
 
 ### Migraciones Próximas por Sprint
 A medida que el Roadmap progrese se inyectarán modificaciones al Postgres:

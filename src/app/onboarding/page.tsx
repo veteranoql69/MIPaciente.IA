@@ -1,349 +1,43 @@
-'use client'
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
+import OnboardingOwnerClient from './client'
 
-import { useEffect, useState, useActionState } from 'react'
-import {
-  Building2, User, CheckCircle2, ChevronRight, ChevronLeft,
-  Loader2, Stethoscope, ClipboardList, RefreshCw, Hospital,
-  ShieldAlert,
-} from 'lucide-react'
-import { getEmpresasActivas, completeOnboarding } from './actions'
+export default async function OnboardingPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-type Empresa = { id: string; nombre: string; slug: string }
-type Rol = 'medico' | 'asistente'
+  if (!user) redirect('/login')
 
-const STEPS = ['Clínica', 'Tu rol', 'Tu nombre', 'Confirmación']
+  // Si ya completó onboarding, redirigir (el middleware lo hace, pero por seguridad)
+  const { data: perfil } = await supabase
+    .from('mpaci_usuarios')
+    .select('onboarding_completado, empresa_id')
+    .eq('id', user.id)
+    .single()
 
-const ROL_OPTIONS: { value: Rol; label: string; icon: React.ReactNode; description: string }[] = [
-  {
-    value: 'medico',
-    label: 'Médico / Cirujano',
-    icon: <Stethoscope className="w-5 h-5" />,
-    description: 'Atiendo pacientes, lleno fichas clínicas y gestiono mi agenda.',
-  },
-  {
-    value: 'asistente',
-    label: 'Asistente / Coordinador',
-    icon: <ClipboardList className="w-5 h-5" />,
-    description: 'Coordino la agenda, registro pacientes y gestiono el CRM.',
-  },
-]
-
-export default function OnboardingPage() {
-  const [step, setStep] = useState(0)
-  const [empresas, setEmpresas] = useState<Empresa[]>([])
-  const [loadingEmpresas, setLoadingEmpresas] = useState(true)
-  const [errorEmpresas, setErrorEmpresas] = useState(false)
-  const [selectedEmpresaId, setSelectedEmpresaId] = useState('')
-  const [selectedRol, setSelectedRol] = useState<Rol | ''>('')
-  const [nombreCompleto, setNombreCompleto] = useState('')
-
-  const [state, action, isPending] = useActionState(completeOnboarding, null)
-
-  function loadEmpresas() {
-    setLoadingEmpresas(true)
-    setErrorEmpresas(false)
-    getEmpresasActivas()
-      .then(setEmpresas)
-      .catch(() => setErrorEmpresas(true))
-      .finally(() => setLoadingEmpresas(false))
+  if (perfil?.onboarding_completado && perfil.empresa_id) {
+    const { data: empresa } = await supabase
+      .from('mpaci_empresas')
+      .select('slug')
+      .eq('id', perfil.empresa_id)
+      .single()
+    if (empresa?.slug) redirect(`/${empresa.slug}/agenda/hoy`)
   }
 
-  useEffect(() => { loadEmpresas() }, [])
+  const rawName: string =
+    user.user_metadata?.full_name ??
+    user.user_metadata?.name ??
+    user.email?.split('@')[0] ??
+    ''
 
-  const selectedEmpresa = empresas.find(e => e.id === selectedEmpresaId)
-  const selectedRolOption = ROL_OPTIONS.find(r => r.value === selectedRol)
-
-  const namePlaceholder = selectedRol === 'medico' ? 'Dr. Carlos Martínez' : 'Carlos Martínez'
-
-  const canAdvance =
-    step === 0 ? !!selectedEmpresaId :
-    step === 1 ? !!selectedRol :
-    step === 2 ? nombreCompleto.trim().length >= 2 :
-    false
+  const firstName = rawName.split(' ')[0] || 'allí'
+  const fullName = rawName || ''
 
   return (
-    <div className="min-h-dvh bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <span className="text-2xl font-bold text-primary">Mi-Paciente</span>
-          <p className="text-muted-foreground text-sm mt-1">Configura tu cuenta en {STEPS.length} pasos</p>
-        </div>
-
-        {/* Step indicator */}
-        <div className="flex items-center justify-center gap-1 mb-8">
-          {STEPS.map((label, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors ${
-                i < step
-                  ? 'bg-accent text-white'
-                  : i === step
-                    ? 'bg-primary text-white'
-                    : 'bg-muted text-muted-foreground'
-              }`}>
-                {i < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
-              </div>
-              <span className={`text-xs font-medium hidden sm:block ${
-                i === step ? 'text-foreground' : 'text-muted-foreground'
-              }`}>
-                {label}
-              </span>
-              {i < STEPS.length - 1 && (
-                <div className={`w-5 h-px mx-1 ${i < step ? 'bg-accent' : 'bg-border'}`} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Card */}
-        <div className="bg-card border border-border rounded-2xl p-6 shadow-md">
-
-          {/* ── Step 0: Selecciona clínica ── */}
-          {step === 0 && (
-            <div>
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-foreground">Selecciona tu clínica</h2>
-                  <p className="text-xs text-muted-foreground">Elige la clínica donde trabajas</p>
-                </div>
-              </div>
-
-              {loadingEmpresas ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                </div>
-              ) : errorEmpresas ? (
-                <div className="text-center py-8 space-y-3">
-                  <ShieldAlert className="w-8 h-8 text-destructive mx-auto" />
-                  <p className="text-sm text-foreground font-medium">No se pudo conectar</p>
-                  <p className="text-xs text-muted-foreground">Verifica tu conexión e intenta de nuevo.</p>
-                  <button
-                    type="button"
-                    onClick={loadEmpresas}
-                    className="flex items-center gap-2 mx-auto px-4 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Reintentar
-                  </button>
-                </div>
-              ) : empresas.length === 0 ? (
-                <div className="text-center py-8 space-y-3">
-                  <Hospital className="w-8 h-8 text-muted-foreground mx-auto" />
-                  <p className="text-sm text-foreground font-medium">No hay clínicas configuradas</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Tu clínica aún no ha sido registrada en el sistema.
-                    Contacta al equipo de Mi-Paciente para continuar.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={loadEmpresas}
-                    className="flex items-center gap-2 mx-auto px-4 py-2 border border-border rounded-lg text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Actualizar lista
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {empresas.map(empresa => (
-                    <button
-                      key={empresa.id}
-                      type="button"
-                      onClick={() => setSelectedEmpresaId(empresa.id)}
-                      className={`w-full text-left px-4 py-3 rounded-xl border transition-all cursor-pointer ${
-                        selectedEmpresaId === empresa.id
-                          ? 'border-primary bg-secondary text-primary font-semibold'
-                          : 'border-border bg-card text-foreground hover:bg-muted hover:border-primary/50'
-                      }`}
-                    >
-                      <span className="text-sm">{empresa.nombre}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Step 1: Selecciona rol ── */}
-          {step === 1 && (
-            <div>
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-foreground">¿Cuál es tu rol?</h2>
-                  <p className="text-xs text-muted-foreground">Define qué permisos tendrás en el sistema</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {ROL_OPTIONS.map(option => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSelectedRol(option.value)}
-                    className={`w-full text-left px-4 py-4 rounded-xl border transition-all cursor-pointer ${
-                      selectedRol === option.value
-                        ? 'border-primary bg-secondary'
-                        : 'border-border bg-card hover:bg-muted hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        selectedRol === option.value ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {option.icon}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-semibold ${selectedRol === option.value ? 'text-primary' : 'text-foreground'}`}>
-                          {option.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                          {option.description}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
-                ¿Eres administrador o dueño de la clínica? El equipo de Mi-Paciente configurará tu acceso de forma manual.
-              </p>
-            </div>
-          )}
-
-          {/* ── Step 2: Nombre completo ── */}
-          {step === 2 && (
-            <div>
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-foreground">¿Cómo te llamas?</h2>
-                  <p className="text-xs text-muted-foreground">Tu nombre aparecerá en registros y fichas clínicas</p>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="nombre_completo" className="block text-sm font-medium text-foreground mb-1.5">
-                  Nombre completo <span className="text-destructive">*</span>
-                </label>
-                <input
-                  id="nombre_completo"
-                  type="text"
-                  value={nombreCompleto}
-                  onChange={e => setNombreCompleto(e.target.value)}
-                  placeholder={namePlaceholder}
-                  autoFocus
-                  autoComplete="name"
-                  className="w-full px-3.5 py-2.5 border border-input rounded-lg text-base text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary transition-colors min-h-[44px]"
-                />
-                <p className="text-xs text-muted-foreground mt-1.5">Mínimo 2 caracteres</p>
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 3: Confirmación + submit ── */}
-          {step === 3 && (
-            <form action={action}>
-              <input type="hidden" name="empresa_id" value={selectedEmpresaId} />
-              <input type="hidden" name="nombre_completo" value={nombreCompleto.trim()} />
-              <input type="hidden" name="rol" value={selectedRol} />
-
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-foreground">Confirma tus datos</h2>
-                  <p className="text-xs text-muted-foreground">Revisa antes de finalizar</p>
-                </div>
-              </div>
-
-              <div className="space-y-2 mb-6">
-                <div className="flex items-center justify-between px-4 py-3 bg-muted rounded-xl">
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Clínica</span>
-                  <span className="text-sm font-semibold text-foreground">{selectedEmpresa?.nombre}</span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3 bg-muted rounded-xl">
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Rol</span>
-                  <span className="text-sm font-semibold text-foreground">{selectedRolOption?.label}</span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3 bg-muted rounded-xl">
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Nombre</span>
-                  <span className="text-sm font-semibold text-foreground">{nombreCompleto.trim()}</span>
-                </div>
-              </div>
-
-              {state?.error && (
-                <div role="alert" className="mb-4 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
-                  {state.error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isPending}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-accent text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] cursor-pointer"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Comenzar a usar Mi-Paciente
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* ── Navegación (pasos 0–2) ── */}
-          {step < 3 && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setStep(s => s - 1)}
-                disabled={step === 0}
-                className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Anterior
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep(s => s + 1)}
-                disabled={!canAdvance}
-                className="flex items-center gap-1 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] cursor-pointer"
-              >
-                Siguiente
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* ── Volver desde confirmación ── */}
-          {step === 3 && (
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              className="mt-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Editar datos
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    <OnboardingOwnerClient
+      firstName={firstName}
+      fullName={fullName}
+      email={user.email ?? ''}
+    />
   )
 }

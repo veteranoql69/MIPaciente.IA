@@ -38,6 +38,14 @@ next-env.d.ts
 .claude/
 .gemini/
 .antigravity/
+.mcp.json
 
 # supabase
 supabase/.temp/
+
+# logs and scratch
+/doc/proxy_debug.log
+/doc/*.log
+/doc/hard_reset_data.sql
+/doc/reset_test_users.sql
+/scratch/

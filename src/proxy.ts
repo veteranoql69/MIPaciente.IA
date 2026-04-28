@@ -1,6 +1,18 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { Database } from '@/lib/database.types'
+import fs from 'fs'
+import path from 'path'
+
+function logDebug(msg: string) {
+  const logPath = path.join(process.cwd(), 'doc', 'proxy_debug.log')
+  const timestamp = new Date().toISOString()
+  try {
+    fs.appendFileSync(logPath, `[${timestamp}] ${msg}\n`)
+  } catch (e) {
+    console.error('Failed to write log:', e)
+  }
+}
 
 const PUBLIC_PATHS = ['/login', '/auth', '/unauthorized']
 const RESERVED_SEGMENTS = new Set([
@@ -61,32 +73,49 @@ export async function proxy(request: NextRequest) {
   }
 
   // Load user profile (empresa_id, rol, onboarding status)
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('mpaci_usuarios')
     .select('empresa_id, rol, onboarding_completado')
     .eq('id', user.id)
     .single()
 
+  logDebug(`Path: ${pathname}, User: ${user.email}, Profile found: ${!!profile}, Error: ${JSON.stringify(profileError)}`)
+
   // No profile row → new user, send to onboarding
   if (!profile) {
+    logDebug('No profile found, redirecting to onboarding')
     if (pathname === '/onboarding') return response
     return NextResponse.redirect(new URL('/onboarding', request.url))
   }
 
-  // Onboarding pending → force wizard
+  // Onboarding pending → detect invitation and route accordingly
   if (!profile.onboarding_completado) {
-    if (pathname === '/onboarding') return response
-    return NextResponse.redirect(new URL('/onboarding', request.url))
+    logDebug('Onboarding incomplete, redirecting')
+    if (pathname.startsWith('/onboarding')) return response
+
+    const { data: inv } = await supabase
+      .from('mpaci_invitaciones')
+      .select('id')
+      .eq('email', user.email!)
+      .eq('usado', false)
+      .gt('expires_at', new Date().toISOString())
+      .limit(1)
+      .maybeSingle()
+
+    const dest = inv ? '/onboarding/invitado' : '/onboarding'
+    return NextResponse.redirect(new URL(dest, request.url))
   }
 
   // Onboarding complete + going to wizard → redirect home
-  if (pathname === '/onboarding') {
+  if (pathname.startsWith('/onboarding')) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
   // Root / or legacy /dashboard → role-based redirect to empresa route
   if (pathname === '/' || pathname === '/dashboard') {
+    logDebug('Root path detected, calculating target...')
     if (!profile.empresa_id) {
+      logDebug('No empresa_id in profile, redirecting to onboarding')
       return NextResponse.redirect(new URL('/onboarding', request.url))
     }
     const { data: empresa } = await supabase
@@ -96,14 +125,16 @@ export async function proxy(request: NextRequest) {
       .single()
 
     if (!empresa) {
+      console.log('[Proxy] Empresa not found for ID:', profile.empresa_id)
       return NextResponse.redirect(new URL('/unauthorized', request.url))
     }
 
     const target =
-      profile.rol === 'medico' || profile.rol === 'asistente'
+      ['medico', 'asistente', 'enfermera_tens', 'externo'].includes(profile.rol)
         ? `/${empresa.slug}/agenda/hoy`
         : `/${empresa.slug}/dashboard`
 
+    logDebug(`Redirecting to: ${target}`)
     return NextResponse.redirect(new URL(target, request.url))
   }
 
