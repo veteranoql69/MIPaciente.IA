@@ -2,7 +2,7 @@ name: Docker Build and Publish
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "feat/*", "feat/model-evolution-v2" ]
   workflow_dispatch:
 
 env:
