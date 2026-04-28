@@ -36,6 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_permisos_empresa
 
 ALTER TABLE public.mpaci_permisos_usuario ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admin general gestiona permisos" ON public.mpaci_permisos_usuario;
+DROP POLICY IF EXISTS "Usuario lee sus propios permisos" ON public.mpaci_permisos_usuario;
+
 -- Solo admin_general puede gestionar permisos (regla dura del doc)
 CREATE POLICY "Admin general gestiona permisos"
     ON public.mpaci_permisos_usuario FOR ALL
@@ -82,6 +85,9 @@ CREATE INDEX IF NOT EXISTS idx_asignaciones_medico
     ON public.mpaci_asignaciones_medico(medico_id, activo);
 
 ALTER TABLE public.mpaci_asignaciones_medico ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Staff ve asignaciones de su empresa" ON public.mpaci_asignaciones_medico;
+DROP POLICY IF EXISTS "Admin gestiona asignaciones" ON public.mpaci_asignaciones_medico;
 
 CREATE POLICY "Staff ve asignaciones de su empresa"
     ON public.mpaci_asignaciones_medico FOR SELECT
