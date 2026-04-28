@@ -472,7 +472,7 @@ SELECT c.empresa_id, c.id, c.contacto_id, true,
         ELSE 'pendiente'
     END
 FROM public.mpaci_citas c
-WHERE c.id LIKE '99000000-0000-0000-0000-0000000000%'
+WHERE c.id::text LIKE '99000000-0000-0000-0000-0000000000%'
   AND c.contacto_id IS NOT NULL;
 
 -- Equipo cita (citas realizadas)
