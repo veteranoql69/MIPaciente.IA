@@ -1603,33 +1603,6 @@ export interface Database {
         }
         Relationships: []
       }
-      mpaci_catalogo_cie10: {
-        Row: {
-          codigo: string
-          descripcion: string
-          capitulo: string | null
-          bloque: string | null
-          activo: boolean | null
-          creado_en: string | null
-        }
-        Insert: {
-          codigo: string
-          descripcion: string
-          capitulo?: string | null
-          bloque?: string | null
-          activo?: boolean | null
-          creado_en?: string | null
-        }
-        Update: {
-          codigo?: string
-          descripcion?: string
-          capitulo?: string | null
-          bloque?: string | null
-          activo?: boolean | null
-          creado_en?: string | null
-        }
-        Relationships: []
-      }
       mpaci_catalogo_medicamentos: {
         Row: {
           id: string
