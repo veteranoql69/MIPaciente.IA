@@ -17,11 +17,9 @@ export default function LoginPage() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-          scopes: 'openid email profile https://www.googleapis.com/auth/calendar.events',
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
+          // TODO: restaurar calendar scope + prompt:consent cuando la app pase a Production en Google Console
+          // scopes: 'openid email profile https://www.googleapis.com/auth/calendar.events',
+          // queryParams: { access_type: 'offline', prompt: 'consent' },
         },
       })
       if (error) throw error
