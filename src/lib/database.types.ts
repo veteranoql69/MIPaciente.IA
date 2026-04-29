@@ -43,6 +43,9 @@ export interface Database {
           permisos: Json
           plantilla_permisos_id: string | null
           creado_en: string | null
+          gcal_access_token: string | null
+          gcal_refresh_token: string | null
+          gcal_token_expiry: string | null
         }
         Insert: {
           id: string
@@ -56,6 +59,9 @@ export interface Database {
           permisos?: Json
           plantilla_permisos_id?: string | null
           creado_en?: string | null
+          gcal_access_token?: string | null
+          gcal_refresh_token?: string | null
+          gcal_token_expiry?: string | null
         }
         Update: {
           id?: string
@@ -69,6 +75,9 @@ export interface Database {
           permisos?: Json
           plantilla_permisos_id?: string | null
           creado_en?: string | null
+          gcal_access_token?: string | null
+          gcal_refresh_token?: string | null
+          gcal_token_expiry?: string | null
         }
         Relationships: []
       }
