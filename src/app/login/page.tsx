@@ -106,10 +106,31 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <p className="text-sm text-slate-400 text-center mt-10 font-medium">
-              Uso exclusivo para personal clínico autorizado. <br/>
-              © 2026 Mi-Paciente.IO
-            </p>
+            <div className="mt-10 text-center space-y-2">
+              <p className="text-sm text-slate-400 font-medium">
+                Uso exclusivo para personal clínico autorizado.
+              </p>
+              <p className="text-xs text-slate-400">
+                © 2026 Mi-Paciente.IO ·{' '}
+                <a
+                  href="https://sditecnologia.cl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-slate-600 transition-colors"
+                >
+                  Política de Privacidad
+                </a>
+                {' · '}
+                <a
+                  href="https://sditecnologia.cl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-slate-600 transition-colors"
+                >
+                  Términos de Servicio
+                </a>
+              </p>
+            </div>
           </div>
         </div>
       </main>
