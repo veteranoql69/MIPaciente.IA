@@ -1705,6 +1705,386 @@ BEGIN
 END $$;
 
 -- ============================================================
+-- PASO 28 — Servicio + Citas quirúrgicas adicionales
+--           Diego Torres (Uretroplastia) + Andrés Bravo (Varicocelectomía)
+-- ============================================================
+
+-- Servicio Varicocelectomía (no estaba en el catálogo)
+INSERT INTO public.mpaci_servicios
+    (id, nombre, categoria, es_cirugia, duracion_minutos, precio_base,
+     activo, empresa_id, roles_sugeridos)
+VALUES
+    ('c3000000-0000-0000-0000-000000000017',
+     'Varicocelectomía Microquirúrgica', 'cirugia', true, 45, 580000, true,
+     'd837f400-60b5-4b53-b0df-2b9a71b12345',
+     '{"cirujano":1,"arsenalera":1,"anestesista":1}')
+ON CONFLICT (id) DO NOTHING;
+
+DO $$
+DECLARE
+    v_emp  UUID := 'd837f400-60b5-4b53-b0df-2b9a71b12345';
+    v_suc  UUID := 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    v_med2 UUID;
+    v_med3 UUID := 'b2000000-0000-0000-0000-000000000001';
+BEGIN
+    SELECT id INTO v_med2 FROM public.mpaci_usuarios
+    WHERE email = 'caltamirano@manmec.cl' AND empresa_id = v_emp LIMIT 1;
+    IF v_med2 IS NULL THEN v_med2 := v_med3; END IF;
+
+    INSERT INTO public.mpaci_citas
+        (id, empresa_id, sucursal_id, medico_id, contacto_id,
+         servicio_id, fecha_inicio, fecha_fin,
+         estado_operativo, estado_confirmacion, estado_pago,
+         precio_base, cobertura_usada, sala_id)
+    VALUES
+        -- Diego Torres — Uretroplastia anastomótica (+15 días, Pabellón 1)
+        ('99000000-0000-0000-0000-000000000029',
+         v_emp, v_suc, v_med2,
+         'd4000000-0000-0000-0000-000000000007',
+         'c3000000-0000-0000-0000-000000000014',
+         date_trunc('day', now()) + interval'15 days' + time'07:30',
+         date_trunc('day', now()) + interval'15 days' + time'09:00',
+         'Agendada', 'confirmada', 'Abono',
+         1500000, 'isapre_cruz_blanca',
+         'a1000000-0000-0000-0000-000000000001'),
+
+        -- Andrés Bravo — Varicocelectomía microquirúrgica (+20 días, Pabellón 1)
+        ('99000000-0000-0000-0000-000000000030',
+         v_emp, v_suc, v_med2,
+         'd4000000-0000-0000-0000-000000000012',
+         'c3000000-0000-0000-0000-000000000017',
+         date_trunc('day', now()) + interval'20 days' + time'08:00',
+         date_trunc('day', now()) + interval'20 days' + time'08:45',
+         'Agendada', 'no_confirmada', 'No pagado',
+         580000, 'isapre_colmena',
+         'a1000000-0000-0000-0000-000000000001');
+
+    -- Pacientes principales de las nuevas citas
+    INSERT INTO public.mpaci_cita_pacientes
+        (empresa_id, cita_id, contacto_id, es_principal, estado_asistencia)
+    VALUES
+        (v_emp, '99000000-0000-0000-0000-000000000029',
+         'd4000000-0000-0000-0000-000000000007', true, 'pendiente'),
+        (v_emp, '99000000-0000-0000-0000-000000000030',
+         'd4000000-0000-0000-0000-000000000012', true, 'pendiente');
+
+    RAISE NOTICE '✓ Citas quirúrgicas adicionales: Uretroplastia (Torres) + Varicocelectomía (Bravo)';
+END $$;
+
+-- ============================================================
+-- PASO 29 — Fichas clínicas quirúrgicas (datos ricos para frontend)
+--           Usa columnas Sprint 6: examen_fisico JSONB, notas_medicas,
+--           examenes_solicitados. Cubre todos los tipos de procedimiento.
+-- ============================================================
+DO $$
+DECLARE
+    v_emp  UUID := 'd837f400-60b5-4b53-b0df-2b9a71b12345';
+    v_med1 UUID;
+    v_med2 UUID;
+    v_med3 UUID := 'b2000000-0000-0000-0000-000000000001';
+BEGIN
+    SELECT id INTO v_med1 FROM public.mpaci_usuarios
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
+    IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
+
+    SELECT id INTO v_med2 FROM public.mpaci_usuarios
+    WHERE email = 'caltamirano@manmec.cl' AND empresa_id = v_emp LIMIT 1;
+    IF v_med2 IS NULL THEN v_med2 := v_med3; END IF;
+
+    -- ── fc-006: REZUM — Manuel Cortés (cita HOY 016) ──────────────
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000006',
+        '99000000-0000-0000-0000-000000000016',
+        v_med1,
+        'PROCEDIMIENTO REZUM — Hiperplasia Prostática Benigna
+Paciente: Manuel Ignacio Cortés Vega, 73 años. FONASA.
+Diagnóstico: HBP sintomática IPSS 18, próstata 38cc. PSA 4.2 ng/mL.
+Antecedentes: DM2 (metformina), HTA (losartán). Alergia a penicilina SEVERA.
+IPSS inicial 18 → moderado-severo. Fracaso relativo alfa-bloqueadores (Tamsulosina 6 sem).
+INDICACIÓN: Rezum por edad, tamaño prostático, y deseo de preservar función sexual.',
+        'Procedimiento Rezum realizado bajo anestesia local. 3 emisiones de vapor en zona de transición (9 seg c/u). Sin complicaciones. Alta inmediata. Inicia Ibuprofeno 400mg c/8h + Ciprofloxacino 500mg c/12h por 5 días. Control con uroflujometría + IPSS en 8 semanas.',
+        'Uroflujometría + residuo post-miccional (8 semanas), IPSS score repetir a las 8 semanas, PSA control 6 meses',
+        'Próstata 38cc en eco previo. Zona de transición hipertrófica. Uretra sin estenosis. Vejiga sin trabeculación severa.',
+        '{"ipss_score": 18, "qmax_ml_s": 7.5, "residuo_post_miccional_ml": 85,
+          "volumen_prostatico_cc": 38, "psa_ng_ml": 4.2,
+          "tacto_rectal": "grado II, adenomatosa, simétrica, sin nódulos",
+          "lma_mm": 22, "pulsos_vapor_aplicados": 3,
+          "asa_clasificacion": "II", "alergia_penicilina": true}'::jsonb,
+        v_med1,
+        now(), now()
+    );
+
+    -- ── fc-007: HoLEP — Patricio Vargas (cita HOY 017) ───────────
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000007',
+        '99000000-0000-0000-0000-000000000017',
+        v_med1,
+        'PROCEDIMIENTO HoLEP — Enucleación Láser Prostática
+Paciente: Patricio Luis Vargas Campos, 77 años. Particular.
+Diagnóstico: HBP severa IPSS 24. Próstata 85cc. Retención urinaria previa (2 episodios).
+Antecedentes: HTA (enalapril), IRC estadio 3 (TFG 42), RTU previa 2015. Alergia contraste yodado SEVERA.
+Evaluación preoperatoria: cardiólogo autoriza cirugía. Nefrólogo indica TFG 42 — estable.
+ASA III por comorbilidades.',
+        'HoLEP realizado bajo raquídea. Enucleación bilobular completa. Adenoma 62g extraído con morcelador. Hemostasia con láser Holmium. Sonda Foley 22Fr instalada con irrigación. Sin complicaciones mayores. Hospitalización 1 noche programada.',
+        'Hemograma + VHS post-op mañana, creatinina 48h post-op (IRC vigilancia), orina completa al alta, control uroflujometría + residuo 6 semanas',
+        'Hemostasia adecuada intraoperatoria. Sin perforación capsular. Cuello vesical conservado. Irrigación limpia al cierre.',
+        '{"ipss_score": 24, "qmax_ml_s": 4.2, "residuo_post_miccional_ml": 180,
+          "volumen_prostatico_cc": 85, "psa_ng_ml": 3.1,
+          "tacto_rectal": "grado III, lisa, simétrica, sin nódulos",
+          "tfg_ml_min": 42, "asa_clasificacion": "III",
+          "adenoma_extraido_g": 62, "tecnica": "HoLEP_bilobular",
+          "sonda_foley_instalada": true, "sonda_fr": 22,
+          "alergia_contraste_yodado": true,
+          "rtup_previa": true, "anio_rtup": 2015}'::jsonb,
+        v_med1,
+        now(), now()
+    );
+
+    -- ── fc-008: Circuncisión ZSR — Jorge Muñoz (cita HOY 019) ─────
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000008',
+        '99000000-0000-0000-0000-000000000019',
+        v_med2,
+        'PROCEDIMIENTO CIRCUNCISIÓN ZSR — Fimosis Grado III
+Paciente: Jorge Esteban Muñoz Díaz, 50 años. FONASA.
+Diagnóstico: Fimosis congénita grado III + ITU recurrente (3 episodios 2024).
+ALERTA CRÍTICA: Alergia a látex — uso de guantes y material libre de látex OBLIGATORIO.
+Reagendado: paciente no asistió cita previa (hace 20 días). Hoy confirmado.',
+        'Circuncisión ZSR talla T3 bajo anestesia local (lidocaína 2% gel + infiltración). Sin incidencias. Anillo colocado correctamente. Alta inmediata con kit de cuidados. Instrucciones entregadas por escrito.',
+        'Control a los 10-14 días (cuando caiga el anillo ZSR), sin exámenes de laboratorio requeridos',
+        'Anillo ZSR en posición correcta post-procedimiento. Sin sangrado activo. Herida cubierta con apósito.',
+        '{"prepucio": "no retráctil grado III",
+          "glande": "sin lesiones visibles, sin balanitis activa",
+          "meato": "central permeable",
+          "sangrado_activo": false,
+          "alergia_latex": true,
+          "anillo_zsr_talla": "T3",
+          "anestesia_usada": "lidocaína 2% gel + infiltración peribalánica",
+          "duracion_procedimiento_min": 15,
+          "material_libre_latex": true}'::jsonb,
+        v_med2,
+        now(), now()
+    );
+
+    -- ── fc-009: LEOC — Cristóbal Silva (cita HOY 021) ─────────────
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000009',
+        '99000000-0000-0000-0000-000000000021',
+        v_med2,
+        'PROCEDIMIENTO LEOC — Litotricia Extracorpórea
+Paciente: Cristóbal Matías Silva Reyes, 27 años. FONASA.
+Diagnóstico: Cálculo vesical 12mm único. Cistoscopia confirmatoria hace 10 días.
+Sin comorbilidades relevantes. Urocultivo negativo pre-procedimiento.',
+        'LEOC con equipo Dornier Delta II. 2800 ondas a 16 kV. Buena imagen fluoroscópica del cálculo. Fragmentación eficiente. Procedimiento bien tolerado. Alta inmediata. Filtro de orina indicado para recuperar fragmentos.',
+        'Orina completa + sedimento a las 48h, Eco vesical control en 4 semanas para verificar litiasis residual, filtrar orina en casa (instrucción entregada)',
+        'Cálculo único vesical 12mm bien delimitado en fluoroscopía. Sin otros cálculos visibles. Vejiga sin trabeculación.',
+        '{"calculo_mm": 12,
+          "localizacion": "pared_posterior_vejiga",
+          "densidad_hu": 980,
+          "sesiones_leoc_previas": 0,
+          "hidronefrosis": "no",
+          "ondas_aplicadas": 2800,
+          "kv_usado": 16,
+          "fragmentacion": "eficiente",
+          "hematuria_post": "leve",
+          "urocultivo_previo": "negativo"}'::jsonb,
+        v_med2,
+        now(), now()
+    );
+
+    -- ── fc-010: Orquidopexia — Sebastián Rojas (cita HOY 022) ─────
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000010',
+        '99000000-0000-0000-0000-000000000022',
+        v_med3,
+        'PROCEDIMIENTO ORQUIDOPEXIA — Hidrocele Izquierdo
+Paciente: Sebastián Omar Rojas Fuentes, 35 años. Particular.
+Diagnóstico: Hidrocele izquierdo 35ml. Asintomático. Paciente solicita corrección electiva.
+Sin patología testicular subyacente. ECO previa confirma testículo normal.',
+        'Orquidopexia bajo sedación + anestesia local. Abordaje escrotal. Eversión y plicatura de túnica vaginal (técnica Jaboulay). Hidrocele drenado (35ml líquido ámbar). Sin complicaciones. Alta 2h post procedimiento.',
+        'Control 7 días (revisión herida), eco escrotal al mes para confirmar resolución',
+        'Herida escrotal izquierda suturada con Vicryl 3-0. Sin sangrado activo. Testículo en posición normal post-fijación.',
+        '{"testiculo_afectado": "izquierdo",
+          "volumen_hidrocele_ml": 35,
+          "liquido_aspecto": "ámbar_claro",
+          "testiculo_contralateral": "normal",
+          "tecnica": "Jaboulay_eversion_tunica",
+          "sutura_usada": "Vicryl 3-0",
+          "sangrado_intraop": "minimo",
+          "duracion_procedimiento_min": 40}'::jsonb,
+        v_med3,
+        now(), now()
+    );
+
+    -- ── fc-011: NLP pre-op — Héctor Gutiérrez (cita +7 días, 023) ─
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000011',
+        '99000000-0000-0000-0000-000000000023',
+        v_med1,
+        'PRE-OP NLP — Nefrolitotomía Percutánea Derecha
+Paciente: Héctor Ramón Gutiérrez León, 61 años. FONASA.
+Diagnóstico: Cálculo coraliforme parcial riñón derecho 25mm + cálculo izq 8mm (seguimiento).
+Antecedentes: NLP izquierda 2020 (UC Christus). Alergia a cotrimoxazol.
+Contraindicación: NO usar cotrimoxazol — rash cutáneo generalizado.
+Evaluación pre-op: TFG 58 ml/min (normal para la edad). Urocultivo negativo.',
+        'Evaluación pre-operatoria NLP derecha. Se explica procedimiento, riesgos y alternativas. Paciente firma consentimiento informado. Instrucciones ayuno 8h, suspender AAS 7 días antes, traer TAC impreso. Profilaxis: Ciprofloxacino 500mg noche previa + mañana cirugía (SIN cotrimoxazol).',
+        'TAC renal sin contraste (traer impreso día cirugía), hemograma + coagulación + creatinina pre-op, orina completa + cultivo, ECG (61 años)',
+        'Paciente en buenas condiciones generales. Sin fiebre. Sin cólico activo. Puño percusión positivo lado derecho.',
+        '{"calculo_derecho_mm": 25,
+          "tipo_calculo_derecho": "coraliforme_parcial",
+          "calculo_izquierdo_mm": 8,
+          "densidad_hu_derecho": 1100,
+          "tfg_ml_min": 58,
+          "obstruccion_derecha": "moderada",
+          "urocultivo": "negativo",
+          "nlp_previa": true, "anio_nlp_previa": 2020, "lado_nlp_previa": "izquierdo",
+          "asa_clasificacion": "II",
+          "alergia_cotrimoxazol": true,
+          "antibiotico_profilaxis": "Ciprofloxacino 500mg (NO cotrimoxazol)"}'::jsonb,
+        v_med1,
+        now()-interval'2 days', now()-interval'2 days'
+    );
+
+    -- ── fc-012: Biopsia Fusión 2 — Gonzalo Herrera (cita +8 días, 024)
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000012',
+        '99000000-0000-0000-0000-000000000024',
+        v_med1,
+        'BIOPSIA PRÓSTATA POR FUSIÓN — Vigilancia Activa PCa Gleason 6
+Paciente: Gonzalo Patricio Herrera Núñez, 65 años. FONASA.
+Diagnóstico: Adenocarcinoma prostático Gleason 6 (3+3) — vigilancia activa.
+PSA 6.8 → 7.1 ng/mL en 6 meses (velocidad PSA 0.3 ng/mL/año — dentro del rango VA).
+RM mpróstata control: lesión PIRADS 3 zona de transición (sin cambio respecto a previa).
+Biopsia previa (hace 15 días): 2/14 cilindros con Gleason 6 < 5% cada uno.
+Esta biopsia: protocolo vigilancia activa — confirmar estabilidad.',
+        'Pre-biopsia evaluación: PSA 7.1, ratio L/T 18%. RM sin nuevas lesiones. Consentimiento firmado. Profilaxis: Ciprofloxacino 500mg 1h antes. Sedación consciente: Midazolam 2mg + Fentanilo 50mcg. 14 cilindros sistemáticos + 2 dirigidos zona PIRADS 3 zona transición. Abordaje transperineal. Sin complicaciones.',
+        'Resultado anatomía patológica en 7-10 días hábiles, PSA control en 6 meses, RM mpróstata control en 12 meses',
+        'AP previa: 2/14 Gleason 6 (3+3) < 5%. Sin extensión extracapsular en RM. Sin invasión vesicular seminal.',
+        '{"psa_ng_ml": 7.1,
+          "psa_previo_ng_ml": 6.8,
+          "ratio_libre_total_pct": 18,
+          "pirads_actual": "3",
+          "pirads_previo": "3",
+          "volumen_prostatico_cc": 58,
+          "zona_sospechosa": "transicion_anterior",
+          "cilindros_tomados": 16,
+          "cilindros_sistematicos": 14,
+          "cilindros_dirigidos": 2,
+          "biopsia_previa_resultado": "Gleason 6 (3+3), 2/14 cilindros <5%",
+          "tecnica": "fusion_transperineal",
+          "profilaxis": "Ciprofloxacino 500mg 1h pre"}'::jsonb,
+        v_med1,
+        now()-interval'1 day', now()-interval'1 day'
+    );
+
+    -- ── fc-014: Uretroplastia pre-op — Diego Torres (+15 días, 029)
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000014',
+        '99000000-0000-0000-0000-000000000029',
+        v_med2,
+        'PRE-OP URETROPLASTIA — Estenosis Uretral Bulbar
+Paciente: Diego Alejandro Torres Pinto, 32 años. Isapre Cruz Blanca.
+Diagnóstico: Estenosis uretral postinfecciosa uretra bulbar 2cm.
+Antecedente: 3 dilataciones ambulatorias (HCH 2023) — fracaso con recidiva rápida.
+Uretrografía retrógrada y miccional: estenosis única 2cm calibre 6Fr en uretra bulbar.
+Uretrometría: Qmax 3.8 ml/s. No candidato a nueva dilatación.',
+        'Evaluación pre-operatoria definitiva. Técnica seleccionada: uretroplastia anastomótica término-terminal (2cm permiten resección y anastomosis directa). Riesgo acortamiento mínimo. Anestesia raquídea. Hospitalización 1-2 noches. Sonda Foley 16Fr por 21 días post cirugía. Consentimiento informado firmado.',
+        'Uretrografía retrógrada + miccional (traer si tiene de HCH), hemograma + coagulación + creatinina, urocultivo pre-op, ECG',
+        'Uretroscopia flexible previa: estenosis densa infranqueable a 2cm del bulbo. Sin fístula. Sin divertículo.',
+        '{"longitud_estenosis_cm": 2.0,
+          "localizacion": "uretra_bulbar",
+          "tipo_estenosis": "postinfecciosa",
+          "qmax_ml_s": 3.8,
+          "calibre_estenosis_fr": 6,
+          "dilataciones_previas": 3,
+          "resultado_dilataciones": "fracaso_con_recidiva",
+          "tecnica_propuesta": "anastomotica_termino_terminal",
+          "asa_clasificacion": "I",
+          "duracion_sonda_post_op_dias": 21}'::jsonb,
+        v_med2,
+        now()+interval'5 days', now()+interval'5 days'
+    );
+
+    -- ── fc-015: Varicocelectomía pre-op — Andrés Bravo (+20 días, 030)
+    INSERT INTO public.mpaci_fichas_clinicas
+        (id, cita_id, medico_id, contenido_texto,
+         notas_medicas, examenes_solicitados, notas_examenes,
+         examen_fisico, medico_consulta_id,
+         creado_en, actualizado_en)
+    VALUES (
+        'fc000000-0000-0000-0000-000000000015',
+        '99000000-0000-0000-0000-000000000030',
+        v_med2,
+        'PRE-OP VARICOCELECTOMÍA — Varicocele Grado II + Factor Masculino
+Paciente: Andrés Tomás Bravo Contreras, 38 años. Isapre Colmena.
+Diagnóstico: Varicocele grado II izquierdo. Análisis seminal alterado.
+Contexto: Pareja en evaluación por infertilidad (ginecólogo: Dr. Salgado, Clínica Alemana).
+Seminograma: concentración 8.2M/ml, motilidad 32%, morfología 3% normales (Kruger).
+ECO doppler escrotal: reflujo venoso izquierdo > 2.5 sec. Testículo derecho normal.',
+        'Evaluación pre-operatoria varicocelectomía microquirúrgica subinguinal izquierda. Técnica de elección por menor tasa de hidrocele post-op y preservación de arterias testiculares. Anestesia espinal. Hospitalización ambulatoria. Alta el mismo día. Resultado seminal esperado en 3-6 meses post corrección. Esposa informada por ginecólogo tratante.',
+        'Seminograma control pre-op (si no tiene uno reciente <3 meses), ECO doppler escrotal (si no tiene), hemograma + coagulación pre-op',
+        'ECO doppler: venas pampiniformes izquierdas dilatadas > 3mm con reflujo al Valsalva. Testículo izquierdo levemente hipotrófico vs contralateral.',
+        '{"grado_varicocele": "II",
+          "lado": "izquierdo",
+          "dilatacion_venas_mm": 3.2,
+          "reflejo_valsalva": true,
+          "seminograma_concentracion_M_ml": 8.2,
+          "seminograma_motilidad_pct": 32,
+          "morfologia_kruger_pct": 3,
+          "volumen_testicular_izq_ml": 14,
+          "volumen_testicular_der_ml": 18,
+          "tecnica_propuesta": "microsurgica_subinguinal",
+          "contexto": "infertilidad_pareja",
+          "asa_clasificacion": "I",
+          "esperado_mejoria_seminal_meses": "3-6"}'::jsonb,
+        v_med2,
+        now()+interval'8 days', now()+interval'8 days'
+    );
+
+    RAISE NOTICE '✓ Fichas clínicas quirúrgicas: 9 fichas cargadas (Sprint-6 + examen_fisico JSONB)';
+END $$;
+
+-- ============================================================
 -- RESUMEN FINAL
 -- ============================================================
 DO $$
@@ -1741,7 +2121,7 @@ BEGIN
     RAISE NOTICE '║ Citas:       %', v_n_citas;
     RAISE NOTICE '║ Fichas clín: %', v_n_fichas;
     RAISE NOTICE '║ Documentos:  %', v_n_docs;
-    RAISE NOTICE '║ Servicios:   16 (urología completa)          ║';
+    RAISE NOTICE '║ Servicios:   17 (urología completa)          ║';
     RAISE NOTICE '╠══════════════════════════════════════════════╣';
     RAISE NOTICE '║ Acceso: /clinica-urologia-demo/agenda/hoy   ║';
     RAISE NOTICE '╚══════════════════════════════════════════════╝';
