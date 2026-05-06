@@ -30,7 +30,10 @@ mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
     │       ├── mpaci_insumos (nombre, sku, stock_actual)                    [00038]
     │       └── mpaci_equipamiento (nombre, activo)                          [00038]
     │
-    ├── mpaci_servicios (nombre, duracion_minutos, precio_base, activo)
+    ├── mpaci_servicios (nombre, duracion_minutos, precio_base, activo,
+    │       categoria, es_cirugia,                                           [00029]
+    │       descripcion_procedimiento, cuidados_post_op[],                   [00051]
+    │       instrucciones_pre_op[], plantilla_consentimiento)                [00051]
     │       ├── mpaci_servicios_precios (cobertura, precio, etiqueta)        [UNIQUE per cobertura]
     │       └── mpaci_servicios_config (medico_id, sucursal_id,              [00023]
     │               duracion_minutos, buffers, sala_id,
@@ -58,6 +61,12 @@ mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
     │       │       +motivos_consulta_ids[], +notas_medicas, +examenes_solicitados[],
     │       │       +notas_examenes, +examen_fisico (JSONB), +fotos_examenes_paths[],
     │       │       +medico_id (owner), +medico_consulta_id (performer), +ultima_edicion_en
+    │       │       ─ Vista Procedimiento (cuando es_cirugia=true):
+    │       │           notas_medicas → "Notas Internas" (solo médico)
+    │       │           contenido_texto → "Notas al Paciente" (va al PDF)
+    │       │           examenes_solicitados[] → controles post-op
+    │       │           examen_fisico JSONB → campos específicos del procedimiento
+    │       │           [PDF generado via Stirling PDF → mpaci_documentos tipo='protocolo_quirurgico']
     │       │       ├── mpaci_registros_clinicos (plantilla_id, contenido)   [00024]
     │       │       └── mpaci_anotaciones_clinicas (contenido) [INMUTABLE]
     │       │
@@ -109,6 +118,45 @@ El sistema utiliza un modelo de **Control de Acceso Basado en Atributos (ABAC)**
 | `handle_new_user()` | TRIGGER | Auto-crea perfil en mpaci_usuarios al registrarse |
 | `handle_user_login()` | TRIGGER | Actualiza avatar_url y ultima_sesion en cada login |
 
+## Vista Procedimiento Quirúrgico (Sprint 7)
+
+Cuando `mpaci_servicios.es_cirugia = true` o `categoria IN ('cirugia','procedimiento')`, el doble-click en una cita de la agenda abre la **Vista Procedimiento** en lugar del modal de consulta rápida estándar.
+
+### Flujo de datos
+
+```text
+[1] Server Action getProcedimientoTemplate(servicio_id)
+    └── SELECT descripcion_procedimiento, cuidados_post_op,
+               instrucciones_pre_op, plantilla_consentimiento
+        FROM mpaci_servicios WHERE id = servicio_id
+        → Pre-llena el formulario (editable por el médico)
+
+[2] Médico completa dos campos libres:
+    ├── Notas Internas    → mpaci_fichas_clinicas.notas_medicas    (privadas, no van al PDF)
+    └── Notas al Paciente → mpaci_fichas_clinicas.contenido_texto  (incluidas en el PDF)
+
+[3] Server Action generarProtocoloPDF(ficha_id)
+    ├── Fusiona: datos paciente + descripcion_procedimiento + cuidados_post_op
+    │            + notas al paciente + plantilla_consentimiento
+    ├── POST → STIRLING_PDF_URL/api/v1/convert/html/pdf   (var en .env)
+    ├── Recibe buffer → Supabase Storage
+    └── INSERT mpaci_documentos (tipo='protocolo_quirurgico', cita_id, ficha_id)
+        → Devuelve URL para firma física o digital
+```
+
+### Campos del examen_fisico JSONB por procedimiento (ejemplos seed)
+
+| Procedimiento | Campos clave JSONB |
+|---|---|
+| REZUM | ipss_score, qmax_ml_s, volumen_prostatico_cc, pulsos_vapor_aplicados, alergia_penicilina |
+| HoLEP | ipss_score, adenoma_extraido_g, asa_clasificacion, alergia_contraste_yodado, tfg_ml_min |
+| Circuncisión ZSR | prepucio (grado), alergia_latex, anillo_zsr_talla, material_libre_latex |
+| LEOC | calculo_mm, densidad_hu, ondas_aplicadas, kv_usado, fragmentacion |
+| Biopsia Fusión | psa_ng_ml, cilindros_tomados, pirads_actual, tecnica |
+| NLP | calculo_derecho_mm, alergia_cotrimoxazol, antibiotico_profilaxis, tfg_ml_min |
+| Uretroplastia | longitud_estenosis_cm, calibre_estenosis_fr, tecnica_propuesta |
+| Varicocelectomía | grado_varicocele, seminograma_concentracion_M_ml, contexto |
+
 ## Historial de Migraciones
 
 | Rango | Descripción |
@@ -122,3 +170,4 @@ El sistema utiliza un modelo de **Control de Acceso Basado en Atributos (ABAC)**
 | **00038–00041** | **Operación: Recursos sede, notas agenda, bloque base configurable, catálogos CIE-10/Med.** |
 | **00042–00049** | **Optimización y ABAC: Reasignaciones, marketing, invitaciones, permisos granulares y Tokens Externos (GCal).** |
 | **00050** | **Consulta Rápida Clínica: mpaci_motivos_consulta + 8 columnas en mpaci_fichas_clinicas (motivos, notas, exámenes, examen físico, fotos). Función calcular_imc().** |
+| **00051** | **Templates Procedimiento Quirúrgico: 4 columnas en mpaci_servicios (descripcion_procedimiento TEXT, cuidados_post_op TEXT[], instrucciones_pre_op TEXT[], plantilla_consentimiento TEXT). Pobladas para 12 servicios del catálogo Urbamed. Alimentan la Vista Procedimiento de la agenda y el PDF de consentimiento via Stirling PDF.** |
