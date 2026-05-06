@@ -1808,7 +1808,7 @@ Antecedentes: DM2 (metformina), HTA (losartán). Alergia a penicilina SEVERA.
 IPSS inicial 18 → moderado-severo. Fracaso relativo alfa-bloqueadores (Tamsulosina 6 sem).
 INDICACIÓN: Rezum por edad, tamaño prostático, y deseo de preservar función sexual.',
         'Procedimiento Rezum realizado bajo anestesia local. 3 emisiones de vapor en zona de transición (9 seg c/u). Sin complicaciones. Alta inmediata. Inicia Ibuprofeno 400mg c/8h + Ciprofloxacino 500mg c/12h por 5 días. Control con uroflujometría + IPSS en 8 semanas.',
-        'Uroflujometría + residuo post-miccional (8 semanas), IPSS score repetir a las 8 semanas, PSA control 6 meses',
+        ARRAY['Uroflujometría + residuo post-miccional (8 semanas)', 'IPSS score repetir a las 8 semanas', 'PSA control 6 meses'],
         'Próstata 38cc en eco previo. Zona de transición hipertrófica. Uretra sin estenosis. Vejiga sin trabeculación severa.',
         '{"ipss_score": 18, "qmax_ml_s": 7.5, "residuo_post_miccional_ml": 85,
           "volumen_prostatico_cc": 38, "psa_ng_ml": 4.2,
@@ -1836,7 +1836,7 @@ Antecedentes: HTA (enalapril), IRC estadio 3 (TFG 42), RTU previa 2015. Alergia 
 Evaluación preoperatoria: cardiólogo autoriza cirugía. Nefrólogo indica TFG 42 — estable.
 ASA III por comorbilidades.',
         'HoLEP realizado bajo raquídea. Enucleación bilobular completa. Adenoma 62g extraído con morcelador. Hemostasia con láser Holmium. Sonda Foley 22Fr instalada con irrigación. Sin complicaciones mayores. Hospitalización 1 noche programada.',
-        'Hemograma + VHS post-op mañana, creatinina 48h post-op (IRC vigilancia), orina completa al alta, control uroflujometría + residuo 6 semanas',
+        ARRAY['Hemograma + VHS post-op mañana', 'Creatinina 48h post-op (IRC vigilancia)', 'Orina completa al alta', 'Control uroflujometría + residuo 6 semanas'],
         'Hemostasia adecuada intraoperatoria. Sin perforación capsular. Cuello vesical conservado. Irrigación limpia al cierre.',
         '{"ipss_score": 24, "qmax_ml_s": 4.2, "residuo_post_miccional_ml": 180,
           "volumen_prostatico_cc": 85, "psa_ng_ml": 3.1,
@@ -1866,7 +1866,7 @@ Diagnóstico: Fimosis congénita grado III + ITU recurrente (3 episodios 2024).
 ALERTA CRÍTICA: Alergia a látex — uso de guantes y material libre de látex OBLIGATORIO.
 Reagendado: paciente no asistió cita previa (hace 20 días). Hoy confirmado.',
         'Circuncisión ZSR talla T3 bajo anestesia local (lidocaína 2% gel + infiltración). Sin incidencias. Anillo colocado correctamente. Alta inmediata con kit de cuidados. Instrucciones entregadas por escrito.',
-        'Control a los 10-14 días (cuando caiga el anillo ZSR), sin exámenes de laboratorio requeridos',
+        ARRAY['Control a los 10-14 días (cuando caiga el anillo ZSR)'],
         'Anillo ZSR en posición correcta post-procedimiento. Sin sangrado activo. Herida cubierta con apósito.',
         '{"prepucio": "no retráctil grado III",
           "glande": "sin lesiones visibles, sin balanitis activa",
@@ -1896,7 +1896,7 @@ Paciente: Cristóbal Matías Silva Reyes, 27 años. FONASA.
 Diagnóstico: Cálculo vesical 12mm único. Cistoscopia confirmatoria hace 10 días.
 Sin comorbilidades relevantes. Urocultivo negativo pre-procedimiento.',
         'LEOC con equipo Dornier Delta II. 2800 ondas a 16 kV. Buena imagen fluoroscópica del cálculo. Fragmentación eficiente. Procedimiento bien tolerado. Alta inmediata. Filtro de orina indicado para recuperar fragmentos.',
-        'Orina completa + sedimento a las 48h, Eco vesical control en 4 semanas para verificar litiasis residual, filtrar orina en casa (instrucción entregada)',
+        ARRAY['Orina completa + sedimento a las 48h', 'Eco vesical control en 4 semanas para verificar litiasis residual', 'Filtrar orina en casa (instrucción entregada)'],
         'Cálculo único vesical 12mm bien delimitado en fluoroscopía. Sin otros cálculos visibles. Vejiga sin trabeculación.',
         '{"calculo_mm": 12,
           "localizacion": "pared_posterior_vejiga",
@@ -1927,7 +1927,7 @@ Paciente: Sebastián Omar Rojas Fuentes, 35 años. Particular.
 Diagnóstico: Hidrocele izquierdo 35ml. Asintomático. Paciente solicita corrección electiva.
 Sin patología testicular subyacente. ECO previa confirma testículo normal.',
         'Orquidopexia bajo sedación + anestesia local. Abordaje escrotal. Eversión y plicatura de túnica vaginal (técnica Jaboulay). Hidrocele drenado (35ml líquido ámbar). Sin complicaciones. Alta 2h post procedimiento.',
-        'Control 7 días (revisión herida), eco escrotal al mes para confirmar resolución',
+        ARRAY['Control 7 días (revisión herida)', 'Eco escrotal al mes para confirmar resolución'],
         'Herida escrotal izquierda suturada con Vicryl 3-0. Sin sangrado activo. Testículo en posición normal post-fijación.',
         '{"testiculo_afectado": "izquierdo",
           "volumen_hidrocele_ml": 35,
@@ -1958,7 +1958,7 @@ Antecedentes: NLP izquierda 2020 (UC Christus). Alergia a cotrimoxazol.
 Contraindicación: NO usar cotrimoxazol — rash cutáneo generalizado.
 Evaluación pre-op: TFG 58 ml/min (normal para la edad). Urocultivo negativo.',
         'Evaluación pre-operatoria NLP derecha. Se explica procedimiento, riesgos y alternativas. Paciente firma consentimiento informado. Instrucciones ayuno 8h, suspender AAS 7 días antes, traer TAC impreso. Profilaxis: Ciprofloxacino 500mg noche previa + mañana cirugía (SIN cotrimoxazol).',
-        'TAC renal sin contraste (traer impreso día cirugía), hemograma + coagulación + creatinina pre-op, orina completa + cultivo, ECG (61 años)',
+        ARRAY['TAC renal sin contraste (traer impreso día cirugía)', 'Hemograma + coagulación + creatinina pre-op', 'Orina completa + cultivo', 'ECG (61 años)'],
         'Paciente en buenas condiciones generales. Sin fiebre. Sin cólico activo. Puño percusión positivo lado derecho.',
         '{"calculo_derecho_mm": 25,
           "tipo_calculo_derecho": "coraliforme_parcial",
@@ -1993,7 +1993,7 @@ RM mpróstata control: lesión PIRADS 3 zona de transición (sin cambio respecto
 Biopsia previa (hace 15 días): 2/14 cilindros con Gleason 6 < 5% cada uno.
 Esta biopsia: protocolo vigilancia activa — confirmar estabilidad.',
         'Pre-biopsia evaluación: PSA 7.1, ratio L/T 18%. RM sin nuevas lesiones. Consentimiento firmado. Profilaxis: Ciprofloxacino 500mg 1h antes. Sedación consciente: Midazolam 2mg + Fentanilo 50mcg. 14 cilindros sistemáticos + 2 dirigidos zona PIRADS 3 zona transición. Abordaje transperineal. Sin complicaciones.',
-        'Resultado anatomía patológica en 7-10 días hábiles, PSA control en 6 meses, RM mpróstata control en 12 meses',
+        ARRAY['Resultado anatomía patológica en 7-10 días hábiles', 'PSA control en 6 meses', 'RM mpróstata control en 12 meses'],
         'AP previa: 2/14 Gleason 6 (3+3) < 5%. Sin extensión extracapsular en RM. Sin invasión vesicular seminal.',
         '{"psa_ng_ml": 7.1,
           "psa_previo_ng_ml": 6.8,
@@ -2029,7 +2029,7 @@ Antecedente: 3 dilataciones ambulatorias (HCH 2023) — fracaso con recidiva rá
 Uretrografía retrógrada y miccional: estenosis única 2cm calibre 6Fr en uretra bulbar.
 Uretrometría: Qmax 3.8 ml/s. No candidato a nueva dilatación.',
         'Evaluación pre-operatoria definitiva. Técnica seleccionada: uretroplastia anastomótica término-terminal (2cm permiten resección y anastomosis directa). Riesgo acortamiento mínimo. Anestesia raquídea. Hospitalización 1-2 noches. Sonda Foley 16Fr por 21 días post cirugía. Consentimiento informado firmado.',
-        'Uretrografía retrógrada + miccional (traer si tiene de HCH), hemograma + coagulación + creatinina, urocultivo pre-op, ECG',
+        ARRAY['Uretrografía retrógrada + miccional (traer si tiene de HCH)', 'Hemograma + coagulación + creatinina', 'Urocultivo pre-op', 'ECG'],
         'Uretroscopia flexible previa: estenosis densa infranqueable a 2cm del bulbo. Sin fístula. Sin divertículo.',
         '{"longitud_estenosis_cm": 2.0,
           "localizacion": "uretra_bulbar",
@@ -2062,7 +2062,7 @@ Contexto: Pareja en evaluación por infertilidad (ginecólogo: Dr. Salgado, Clí
 Seminograma: concentración 8.2M/ml, motilidad 32%, morfología 3% normales (Kruger).
 ECO doppler escrotal: reflujo venoso izquierdo > 2.5 sec. Testículo derecho normal.',
         'Evaluación pre-operatoria varicocelectomía microquirúrgica subinguinal izquierda. Técnica de elección por menor tasa de hidrocele post-op y preservación de arterias testiculares. Anestesia espinal. Hospitalización ambulatoria. Alta el mismo día. Resultado seminal esperado en 3-6 meses post corrección. Esposa informada por ginecólogo tratante.',
-        'Seminograma control pre-op (si no tiene uno reciente <3 meses), ECO doppler escrotal (si no tiene), hemograma + coagulación pre-op',
+        ARRAY['Seminograma control pre-op (si no tiene uno reciente <3 meses)', 'ECO doppler escrotal (si no tiene)', 'Hemograma + coagulación pre-op'],
         'ECO doppler: venas pampiniformes izquierdas dilatadas > 3mm con reflujo al Valsalva. Testículo izquierdo levemente hipotrófico vs contralateral.',
         '{"grado_varicocele": "II",
           "lado": "izquierdo",
