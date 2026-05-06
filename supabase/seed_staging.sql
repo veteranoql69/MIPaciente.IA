@@ -646,7 +646,7 @@ SELECT
         ELSE 'pendiente'
     END
 FROM public.mpaci_citas c
-WHERE c.id LIKE '99000000-0000-0000-0000-0000000000%'
+WHERE c.id::text LIKE '99000000-0000-0000-0000-0000000000%'
   AND c.contacto_id IS NOT NULL
 ON CONFLICT (cita_id, contacto_id) DO NOTHING;
 
@@ -750,6 +750,126 @@ VALUES
      ),
      137500, 'pendiente_confirmacion')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 14. VINCULAR CUENTAS REALES (Google OAuth) A STAGING
+--     Reasigna citas staging → UUIDs reales si las cuentas
+--     ya hicieron login con Google. Si no, mantiene staging.
+-- ============================================================
+DO $$
+DECLARE
+    v_emp       UUID := 'd837f400-60b5-4b53-b0df-2b9a71b12345';
+    v_suc       UUID := 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    v_real_med1 UUID; -- procesossdi@gmail.com  → Schatloff
+    v_real_med2 UUID; -- caltamirano@manmec.cl  → Altamirano
+    v_real_asis UUID; -- sditecnologiachile@gmail.com → Rosa Vega
+    v_real_enf  UUID; -- tattynailsbeauty@gmail.com   → María Rojas
+BEGIN
+    SELECT id INTO v_real_med1 FROM auth.users WHERE email = 'procesossdi@gmail.com';
+    SELECT id INTO v_real_med2 FROM auth.users WHERE email = 'caltamirano@manmec.cl';
+    SELECT id INTO v_real_asis FROM auth.users WHERE email = 'sditecnologiachile@gmail.com';
+    SELECT id INTO v_real_enf  FROM auth.users WHERE email = 'tattynailsbeauty@gmail.com';
+
+    -- ── Perfiles mpaci_usuarios para cuentas reales ───────────
+    IF v_real_med1 IS NOT NULL THEN
+        INSERT INTO public.mpaci_usuarios
+            (id, email, nombre_completo, empresa_id, rol, onboarding_completado)
+        VALUES (v_real_med1, 'procesossdi@gmail.com', 'Dr. Rodrigo Schatloff',
+                v_emp, 'medico', true)
+        ON CONFLICT (id) DO UPDATE SET
+            empresa_id = v_emp, rol = 'medico',
+            nombre_completo = 'Dr. Rodrigo Schatloff', onboarding_completado = true;
+        PERFORM public.seed_permisos_por_rol(v_real_med1, v_emp, 'medico'::app_role, NULL);
+    END IF;
+
+    IF v_real_med2 IS NOT NULL THEN
+        INSERT INTO public.mpaci_usuarios
+            (id, email, nombre_completo, empresa_id, rol, onboarding_completado)
+        VALUES (v_real_med2, 'caltamirano@manmec.cl', 'Dr. Cristóbal Altamirano',
+                v_emp, 'medico', true)
+        ON CONFLICT (id) DO UPDATE SET
+            empresa_id = v_emp, rol = 'medico',
+            nombre_completo = 'Dr. Cristóbal Altamirano', onboarding_completado = true;
+        PERFORM public.seed_permisos_por_rol(v_real_med2, v_emp, 'medico'::app_role, NULL);
+    END IF;
+
+    IF v_real_asis IS NOT NULL THEN
+        INSERT INTO public.mpaci_usuarios
+            (id, email, nombre_completo, empresa_id, rol, onboarding_completado)
+        VALUES (v_real_asis, 'sditecnologiachile@gmail.com', 'Rosa Vega',
+                v_emp, 'asistente', true)
+        ON CONFLICT (id) DO UPDATE SET
+            empresa_id = v_emp, rol = 'asistente',
+            nombre_completo = 'Rosa Vega', onboarding_completado = true;
+        PERFORM public.seed_permisos_por_rol(v_real_asis, v_emp, 'asistente'::app_role, NULL);
+    END IF;
+
+    IF v_real_enf IS NOT NULL THEN
+        INSERT INTO public.mpaci_usuarios
+            (id, email, nombre_completo, empresa_id, rol, onboarding_completado)
+        VALUES (v_real_enf, 'tattynailsbeauty@gmail.com', 'María Rojas',
+                v_emp, 'enfermera_tens', true)
+        ON CONFLICT (id) DO UPDATE SET
+            empresa_id = v_emp, rol = 'enfermera_tens',
+            nombre_completo = 'María Rojas', onboarding_completado = true;
+        PERFORM public.seed_permisos_por_rol(v_real_enf, v_emp, 'enfermera_tens'::app_role, NULL);
+    END IF;
+
+    -- ── Reasignar citas staging → médicos reales ─────────────
+    IF v_real_med1 IS NOT NULL THEN
+        UPDATE public.mpaci_citas
+        SET medico_id = v_real_med1
+        WHERE medico_id = 'b2000000-0000-0000-0000-000000000001'
+          AND empresa_id = v_emp;
+        UPDATE public.mpaci_equipo_cita
+        SET usuario_id = v_real_med1
+        WHERE usuario_id = 'b2000000-0000-0000-0000-000000000001';
+        UPDATE public.mpaci_honorarios_bloque
+        SET medico_id = v_real_med1
+        WHERE medico_id = 'b2000000-0000-0000-0000-000000000001'
+          AND empresa_id = v_emp;
+        UPDATE public.mpaci_horarios_prestador
+        SET medico_id = v_real_med1
+        WHERE medico_id = 'b2000000-0000-0000-0000-000000000001'
+          AND empresa_id = v_emp;
+        RAISE NOTICE '✓ Citas reasignadas → Schatloff (procesossdi@gmail.com)';
+    ELSE
+        RAISE NOTICE '⚠ procesossdi@gmail.com no encontrado — citas quedan en staging';
+    END IF;
+
+    IF v_real_med2 IS NOT NULL THEN
+        UPDATE public.mpaci_citas
+        SET medico_id = v_real_med2
+        WHERE medico_id = 'b2000000-0000-0000-0000-000000000002'
+          AND empresa_id = v_emp;
+        UPDATE public.mpaci_equipo_cita
+        SET usuario_id = v_real_med2
+        WHERE usuario_id = 'b2000000-0000-0000-0000-000000000002';
+        UPDATE public.mpaci_horarios_prestador
+        SET medico_id = v_real_med2
+        WHERE medico_id = 'b2000000-0000-0000-0000-000000000002'
+          AND empresa_id = v_emp;
+        RAISE NOTICE '✓ Citas reasignadas → Altamirano (caltamirano@manmec.cl)';
+    ELSE
+        RAISE NOTICE '⚠ caltamirano@manmec.cl no encontrado — citas quedan en staging';
+    END IF;
+
+    -- ── Asignaciones asistente real → médicos reales ─────────
+    IF v_real_asis IS NOT NULL AND v_real_med1 IS NOT NULL THEN
+        INSERT INTO public.mpaci_asignaciones_medico
+            (empresa_id, asistente_id, medico_id, activo)
+        VALUES (v_emp, v_real_asis, v_real_med1, true)
+        ON CONFLICT (asistente_id, medico_id) DO NOTHING;
+    END IF;
+    IF v_real_asis IS NOT NULL AND v_real_med2 IS NOT NULL THEN
+        INSERT INTO public.mpaci_asignaciones_medico
+            (empresa_id, asistente_id, medico_id, activo)
+        VALUES (v_emp, v_real_asis, v_real_med2, true)
+        ON CONFLICT (asistente_id, medico_id) DO NOTHING;
+    END IF;
+
+    RAISE NOTICE '✓ PASO 14 completado — cuentas reales vinculadas';
+END $$;
 
 -- ============================================================
 -- RESUMEN

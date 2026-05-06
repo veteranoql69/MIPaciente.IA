@@ -42,7 +42,7 @@ export default async function EmpresaLayout({ params, children }: Props) {
   return (
     <EmpresaProvider empresa={empresa} usuario={usuario}>
       <PermissionProvider value={permissions}>
-        <div className="flex min-h-dvh flex-col lg:flex-row">
+        <div className="flex min-h-dvh lg:flex-row">
           <SidebarNav
             empresaSlug={empresa_slug}
             empresaNombre={empresa.nombre}
@@ -50,8 +50,7 @@ export default async function EmpresaLayout({ params, children }: Props) {
             usuarioEmail={usuario.email}
             rol={usuario.rol}
           />
-          {/* Main content: responsive margin */}
-          <main id="main-content" className="flex-1 lg:ml-60 min-h-dvh bg-background w-full">
+          <main id="main-content" className="flex-1 min-h-dvh bg-background w-full overflow-x-hidden">
             {children}
           </main>
         </div>

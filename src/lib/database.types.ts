@@ -17,7 +17,7 @@ export type Json =
 export type AppRole =
   | 'admin_general'
   | 'admin'
-  | 'gerente' // deprecated (00042). No usar en código nuevo.
+  | 'gerente' // deprecated (00042). No usar en c├│digo nuevo.
   | 'asistente'
   | 'medico'
   | 'enfermera_tens'
@@ -627,11 +627,11 @@ export interface Database {
             | 'Agendada'
             | 'Realizada'
             | 'No realizada (presente)'
-            | 'No asistió'
-            | 'Cancelada por clínica'
+            | 'No asisti├│'
+            | 'Cancelada por cl├¡nica'
             | 'Cancelada por paciente dentro de plazo'
             | 'Cancelada por paciente fuera de plazo'
-          estado_pago: 'No pagado' | 'Pago parcial' | 'Pago total' | 'Cortesía' | 'Reembolsado'
+          estado_pago: 'No pagado' | 'Pago parcial' | 'Pago total' | 'Cortes├¡a' | 'Reembolsado'
           estado_confirmacion: 'no_confirmada' | 'confirmada'
           cobertura_usada: string | null
           gcal_event_id: string | null
@@ -950,7 +950,7 @@ export interface Database {
       }
 
       // ----------------------------------------------------------
-      // AGENDA — Equipo, Honorarios, Pagos, Auditoría
+      // AGENDA ÔÇö Equipo, Honorarios, Pagos, Auditor├¡a
       // ----------------------------------------------------------
       mpaci_equipo_cita: {
         Row: {
@@ -1164,7 +1164,7 @@ export interface Database {
       }
 
       // ----------------------------------------------------------
-      // AGENDA — Recursos (insumos, equipamiento)
+      // AGENDA ÔÇö Recursos (insumos, equipamiento)
       // ----------------------------------------------------------
       mpaci_insumos: {
         Row: {
@@ -1261,7 +1261,7 @@ export interface Database {
       }
 
       // ----------------------------------------------------------
-      // FICHA CLÍNICA
+      // FICHA CL├ìNICA
       // ----------------------------------------------------------
       mpaci_fichas_clinicas: {
         Row: {
@@ -1272,15 +1272,36 @@ export interface Database {
           empresa_id: string | null
           creado_en: string | null
           actualizado_en: string | null
+          // ── Columnas 00050: Consulta Rápida ────────────────────
+          motivos_consulta_ids: string[] | null
+          notas_medicas: string | null
+          examenes_solicitados: string[] | null
+          notas_examenes: string | null
+          examen_fisico: Json | null
+          fotos_examenes_paths: string[] | null
+          medico_consulta_id: string | null
+          ultima_edicion_en: string | null
+          contacto_id: string | null
+          creado_por: string | null
         }
         Insert: {
           id?: string
           cita_id: string
-          medico_id: string
+          medico_id?: string
           contenido_texto?: string | null
           empresa_id?: string | null
           creado_en?: string | null
           actualizado_en?: string | null
+          motivos_consulta_ids?: string[] | null
+          notas_medicas?: string | null
+          examenes_solicitados?: string[] | null
+          notas_examenes?: string | null
+          examen_fisico?: Json | null
+          fotos_examenes_paths?: string[] | null
+          medico_consulta_id?: string | null
+          ultima_edicion_en?: string | null
+          contacto_id?: string | null
+          creado_por?: string | null
         }
         Update: {
           id?: string
@@ -1290,6 +1311,47 @@ export interface Database {
           empresa_id?: string | null
           creado_en?: string | null
           actualizado_en?: string | null
+          motivos_consulta_ids?: string[] | null
+          notas_medicas?: string | null
+          examenes_solicitados?: string[] | null
+          notas_examenes?: string | null
+          examen_fisico?: Json | null
+          fotos_examenes_paths?: string[] | null
+          medico_consulta_id?: string | null
+          ultima_edicion_en?: string | null
+          contacto_id?: string | null
+          creado_por?: string | null
+        }
+        Relationships: []
+      }
+      // ── 00050: Catálogo de Motivos de Consulta ──────────────────
+      mpaci_motivos_consulta: {
+        Row: {
+          id: string
+          empresa_id: string | null // NULL = global
+          nombre: string
+          activo: boolean
+          orden: number
+          creado_por: string | null
+          creado_en: string | null
+        }
+        Insert: {
+          id?: string
+          empresa_id?: string | null
+          nombre: string
+          activo?: boolean
+          orden?: number
+          creado_por?: string | null
+          creado_en?: string | null
+        }
+        Update: {
+          id?: string
+          empresa_id?: string | null
+          nombre?: string
+          activo?: boolean
+          orden?: number
+          creado_por?: string | null
+          creado_en?: string | null
         }
         Relationships: []
       }
@@ -1654,7 +1716,7 @@ export interface Database {
       }
 
       // ----------------------------------------------------------
-      // CATÁLOGOS GLOBALES
+      // CAT├üLOGOS GLOBALES
       // ----------------------------------------------------------
       mpaci_catalogo_cie10: {
         Row: {
@@ -1718,7 +1780,7 @@ export interface Database {
       }
 
       // ----------------------------------------------------------
-      // PERMISOS (plantillas + auditoría)
+      // PERMISOS (plantillas + auditor├¡a)
       // ----------------------------------------------------------
       mpaci_plantillas_permisos: {
         Row: {
@@ -1784,7 +1846,7 @@ export interface Database {
       }
 
       // ----------------------------------------------------------
-      // ESTADÍSTICAS
+      // ESTAD├ìSTICAS
       // ----------------------------------------------------------
       mpaci_reportes: {
         Row: {
@@ -1905,7 +1967,7 @@ export interface Database {
       }
 
       // ----------------------------------------------------------
-      // CRM → ANALÍTICA (reasignaciones, campañas, fuentes)
+      // CRM ÔåÆ ANAL├ìTICA (reasignaciones, campa├▒as, fuentes)
       // ----------------------------------------------------------
       mpaci_reasignaciones: {
         Row: {

@@ -12,6 +12,7 @@ La integridad técnica del proyecto Mi-Paciente recae en una serie estricta de d
 | **Logs CRM Inmutables** | Las bitácoras comerciales de un CRM (`mpaci_bitacora` y `mpaci_anotaciones_clinicas`) poseen triggers nativos `FOR UPDATE USING (false)` y `FOR DELETE USING (false)` para cancelar toda modificación y borrado. |
 | **Slug Restricciones** | URL empresarial única, garantizada con `CHECK constraint` base (`slug = lower(slug)` y Regex contra caracteres especiales). Evita exploits web o colisiones de rutas. |
 | **Protección Server Actions** | Todas las mutaciones suceden bajo *Server Actions*, en bloques `try/catch` rigurosos, emitiendo respuestas parseadas y filtradas bajo un esquema de validación constante apoyándose en la librería **Zod**. |
+| **Visibilidad Delegada (Asistentes)** | Un usuario con rol `asistente` solo puede ver/gestionar la agenda de los médicos definidos en `mpaci_asignaciones_medico`. El permiso `agenda.ver_completa` (usualmente solo para Admins) es el único que bypassa esta restricción. |
 
 ## Reglas Críticas de Agentes de Inteligencia Artificial
 

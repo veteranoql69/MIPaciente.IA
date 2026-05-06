@@ -8,10 +8,18 @@ El stack definido para el MVP no se debe modificar e incluye las siguientes tecn
 - **Core Framework:** Next.js 16.2.3 (App Router, Server Actions) con React 19.2.4.
 - **UI & Styling:** Tailwind CSS, `shadcn/ui` (para componentes granulares), `@dnd-kit/core` (para drag & drop, e.g., en la vista de Agenda Semanal).
 - **Backend & Database:** Supabase Self-Hosted (PostgreSQL, Auth, Storage, Realtime habilitado).
+- **Integraciones de Agenda:** Google Calendar API (OAuth2 con persistencia de refresh tokens en `mpaci_usuarios`).
 - **AI Orchestration:** Vercel AI SDK (`ai`, `@ai-sdk/google` usando Gemini).
 - **AI Observability:** Langfuse (Self-hosted).
 - **PDF Generation:** Stirling PDF (Self-hosted REST API). No usar herramientas de frontend puro como react-pdf o Puppeteer.
+- **Email & Communications:** Resend (Invitaciones, alertas y notificaciones transaccionales).
 - **Validation:** `zod` para todo (API routes, Server Actions, y schemas de AI Tools).
+
+## Seguridad y Permisos: Modelo ABAC
+A partir del Sprint 2, el sistema evolucionó de roles estáticos a un modelo de **Control de Acceso Basado en Atributos (ABAC)**:
+- **`mpaci_permisos_usuario`:** Tabla maestra que define permisos granulares (p.ej. `agenda.ver_completa`, `crm.exportar`) por módulo.
+- **`tiene_permiso()`:** Función `SECURITY DEFINER` en PostgreSQL que centraliza la lógica de validación para RLS y Server Actions.
+- **Plantillas por Rol:** Al invitar a un usuario, se le asigna una "plantilla de permisos" base según su rol (`medico`, `asistente`, etc.), la cual puede ser personalizada posteriormente por un `admin_general`.
 
 ## Patrón Arquitectónico: Modular Monolith
 El enrutamiento público recae únicamente sobre `src/app`. Toda la lógica de negocio vive agrupada dentro de `src/modules/` y se rige por fronteras estrictas de contexto (Domain-Driven Design).

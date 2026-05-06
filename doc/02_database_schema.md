@@ -13,8 +13,12 @@ Toda la base de datos corre sobre un modelo Multi-Tenant aislando datos lógicam
 ```text
 auth.users (Manejado por Supabase GoTrue Auth interno)
     └── mpaci_usuarios 
-        (empresa_id, rol app_role, permisos JSONB, plantilla_permisos_id,
-         onboarding_completado, avatar_url, ultima_sesion)
+        (empresa_id, rol app_role, onboarding_completado, avatar_url, ultima_sesion)
+        │
+        (+ gcal_access_token, gcal_refresh_token, gcal_token_expiry)          [00049]
+        │
+        ├── mpaci_permisos_usuario (modulo, permiso, activo) [ABAC System]    [00048]
+        └── mpaci_asignaciones_medico (asistente_id, medico_id)               [00048]
 
 mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
                 bloque_base_min [10,15,20])                             [00039]
@@ -43,12 +47,17 @@ mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
     │       │       └── [Ref a mpaci_catalogo_cie10]                         [00040]
     │       ├── mpaci_medicamentos_paciente (nombre, catalogo_id)            [00040]
     │       ├── mpaci_alergias, mpaci_cirugias_externas, mpaci_documentos    [00024]
-    │       └── mpaci_timeline_eventos (origen, referencia_id, desc)         [00022]
+    │       ├── mpaci_timeline_eventos (origen, referencia_id, desc)         [00022]
+    │       └── mpaci_motivos_consulta (empresa_id nullable=global, nombre, activo, [00050]
+    │               orden) — catálogo de chips motivo consulta; NULL=global
     │
     ├── mpaci_citas (sucursal_id, contacto_id, servicio_id, medico_id,
     │       precio_base, estado_operativo, estado_pago)                      [00023]
     │       │
-    │       ├── mpaci_fichas_clinicas (contenido_texto [DEPRECATED]) [LOCK 24h]
+    │       ├── mpaci_fichas_clinicas (contenido_texto [DEPRECATED]) [LOCK 24h] [00050]
+    │       │       +motivos_consulta_ids[], +notas_medicas, +examenes_solicitados[],
+    │       │       +notas_examenes, +examen_fisico (JSONB), +fotos_examenes_paths[],
+    │       │       +medico_id (owner), +medico_consulta_id (performer), +ultima_edicion_en
     │       │       ├── mpaci_registros_clinicos (plantilla_id, contenido)   [00024]
     │       │       └── mpaci_anotaciones_clinicas (contenido) [INMUTABLE]
     │       │
@@ -75,6 +84,16 @@ mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
     └── mpaci_catalogo_medicamentos (nombre_generico, concentracion)         [00040]
 ```
 
+## Seguridad y Control de Acceso (ABAC y RLS)
+El sistema utiliza un modelo de **Control de Acceso Basado en Atributos (ABAC)** mediante la tabla `mpaci_permisos_usuario`, sumado a **Row Level Security (RLS)** nativo de PostgreSQL.
+
+1. **Jerarquía:** Un `admin_general` tiene acceso total implícito. Otros roles (`medico`, `asistente`, etc.) dependen de sus entradas activas en la tabla de permisos.
+2. **Asignaciones:** La tabla `mpaci_asignaciones_medico` permite que un asistente gestione la agenda de múltiples médicos específicos.
+3. **Fichas Clínicas (Doble Verificación y Bloqueo 24h):** 
+   - Para insertar (`INSERT`), el sistema exige que el usuario sea el `medico_id` de la ficha (Owner).
+   - El profesional que realiza la consulta puntual queda registrado en `medico_consulta_id` (Performer).
+   - Para actualizar (`UPDATE`), la ficha se bloquea automáticamente pasadas **24 horas** desde `ultima_edicion_en` para garantizar inmutabilidad clínica.
+
 ## Estructura de Precios y Honorarios
 1. `mpaci_servicios.precio_base`: Precio base de la clínica.
 2. `mpaci_servicios_precios.precio`: Precios contractuales por cobertura (Isapre, Fonasa).
@@ -85,10 +104,10 @@ mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
 | Función | Tipo | Propósito |
 |---|---|---|
 | `get_my_empresa_id()` | SECURITY DEFINER | Obtiene empresa_id del usuario autenticado para RLS |
-| `check_permission(user_id, key)` | SECURITY DEFINER | Verifica permiso granular (override > plantilla > false) |
+| `tiene_permiso(user_id, mod, perm)` | SECURITY DEFINER | Valida permiso granular (modular) |
+| `seed_permisos_por_rol()` | FUNCTION | Aplica plantillas de permisos base según el rol del usuario |
 | `handle_new_user()` | TRIGGER | Auto-crea perfil en mpaci_usuarios al registrarse |
 | `handle_user_login()` | TRIGGER | Actualiza avatar_url y ultima_sesion en cada login |
-| `fn_contactos_updated_at()` | TRIGGER | Actualiza timestamp en cada UPDATE de contacto |
 
 ## Historial de Migraciones
 
@@ -101,4 +120,5 @@ mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
 | **00027–00033** | **Refuerzo: Roles nuevos, checks críticos, honorarios avanzados, snapshots de cita.** |
 | **00034–00037** | **Disponibilidad: Horarios recurrentes (prestador), pausas, excepciones, procedimientos.** |
 | **00038–00041** | **Operación: Recursos sede, notas agenda, bloque base configurable, catálogos CIE-10/Med.** |
-| **00042–00047** | **Optimización: Reasignaciones CRM, marketing (fuentes/campañas), sistema de invitaciones y fix de recursión RLS.** |
+| **00042–00049** | **Optimización y ABAC: Reasignaciones, marketing, invitaciones, permisos granulares y Tokens Externos (GCal).** |
+| **00050** | **Consulta Rápida Clínica: mpaci_motivos_consulta + 8 columnas en mpaci_fichas_clinicas (motivos, notas, exámenes, examen físico, fotos). Función calcular_imc().** |

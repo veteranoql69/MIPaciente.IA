@@ -8,7 +8,7 @@ El MVP de **Mi-Paciente.com** sigue un esquema estricto e inamovible de ejecuci�
 |--------|----------------|---------------|----------|----------------|--------|
 | **S1** | Días 1-15 | **Infraestructura Base** | ✅ Listo | ✅ Listo | **COMPLETADO** |
 | **S2** | Días 16-30 | **Multi-Tenant + Auth + Onboarding** | ✅ Listo | ✅ Listo | **COMPLETADO** |
-| **S3** | Días 31-45 | **Agenda (1ra Parte): Disposiciones y DB** | ⏳ Pend. | ⏳ Pend. | **EN CURSO** |
+| **S3** | Días 31-45 | **Agenda (1ra Parte): Disposiciones y DB** | ✅ Listo | ⏳ Pend. | **EN CURSO** |
 | **S4** | Días 46-60 | **Agenda (2da Parte): Semanal y Vistas** | — | ⏳ Pend. | Pendiente |
 | **S5** | Días 61-75 | **Kanban y CRM** | ⏳ Pend. | ⏳ Pend. | Pendiente |
 | **S6** | Días 76-90 | **Ficha Clínica y Firma PDFs** | — | ⏳ Pend. | Pendiente |
@@ -21,12 +21,18 @@ El MVP de **Mi-Paciente.com** sigue un esquema estricto e inamovible de ejecuci�
 
 ## Desglose y Focos Actuales
 
-### Últimos Logros (Sprint 1 y Sprint 2)
-Se ha consolidado el sistema **Multi-Tenant** y el flujo de **Onboarding**. Se resolvió un problema crítico de recursión infinita en las políticas RLS de `mpaci_usuarios`, permitiendo ahora un acceso fluido y seguro a los dashboards dinámicos según el `empresa_slug`. La autenticación y el sistema de invitaciones (con Resend) ya están operativos y validados.
+### Últimos Logros (Sprint 1 y Sprint 2 - COMPLETADOS)
+Se ha consolidado el sistema **Multi-Tenant** y el flujo de **Onboarding**. Se resolvió de manera exitosa la recursión infinita en las políticas RLS de `mpaci_usuarios`, permitiendo un acceso fluido y seguro a los dashboards dinámicos según el `empresa_slug`. 
 
-### Foco Inmediato: Sprint 3
+La infraestructura de Autenticación ahora cuenta con:
+- Login nativo y soporte para OAuth.
+- Integración nativa con **Google Calendar API** (tokens off-line en columnas de `mpaci_usuarios`).
+- Sistema robusto de Invitaciones vía e-mail (usando Resend).
+- Sistema de Control de Acceso (ABAC) con el módulo `permissions`.
+
+### Foco Inmediato: Sprint 3 (EN CURSO)
 * **Objetivo principal:** Módulo Agenda Parte 1.
-* **Componentes clave:** Implementar la vista diaria de citas, gestión de bloques horarios y validación de disponibilidad.
+* **Componentes clave:** Implementar la vista diaria de citas (`AgendaHoyClient`), gestión de bloques horarios y validación de disponibilidad.
 * **Base de datos:** Formalizar contratos de precios y coberturas médicas.
 
 ### Migraciones Próximas por Sprint

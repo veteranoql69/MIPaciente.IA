@@ -1,0 +1,220 @@
+import { createClient } from '@/utils/supabase/server'
+import type { AppRole } from '@/lib/database.types'
+
+export type CitaHoy = {
+  id: string
+  fecha_inicio: string
+  fecha_fin: string
+  estado_operativo: string
+  estado_confirmacion: string
+  estado_pago: string
+  precio_base: number
+  medico: { id: string; nombre_completo: string } | null
+  contacto: { id: string; nombre: string } | null
+  servicio: { id: string; nombre: string; duracion_minutos: number; categoria: string | null } | null
+  sala: { id: string; nombre: string } | null
+}
+
+export type AntecedentePaciente = {
+  contacto_id: string
+  nombre: string
+  fecha_nacimiento: string | null
+  genero: string | null
+  prevision: string | null
+  telefono: string | null
+  email: string | null
+  alergias: {
+    id: string
+    sustancia: string
+    severidad: 'leve' | 'moderada' | 'severa' | null
+    reaccion: string | null
+  }[]
+  diagnosticos: {
+    id: string
+    codigo_cie10: string
+    descripcion: string
+    estado: string
+    lateralidad: string | null
+  }[]
+  medicamentos: {
+    id: string
+    nombre: string
+    nota: string | null
+  }[]
+  cirugias: {
+    id: string
+    nombre: string
+    fecha: string | null
+  }[]
+  citas_previas: {
+    id: string
+    fecha_inicio: string
+    estado_operativo: string
+    servicio_nombre: string | null
+  }[]
+}
+
+export async function getCitasHoy(
+  empresaId: string,
+  usuarioId: string,
+  rol: AppRole,
+  medicosAsignados: string[]
+): Promise<CitaHoy[]> {
+  const supabase = await createClient()
+
+  const hoy = new Date()
+  const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()).toISOString()
+  const finHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 1).toISOString()
+
+  if (rol === 'asistente' && medicosAsignados.length === 0) return []
+
+  let query = supabase
+    .from('mpaci_citas')
+    .select(`
+      id, fecha_inicio, fecha_fin,
+      estado_operativo, estado_confirmacion, estado_pago,
+      precio_base,
+      medico:medico_id(id, nombre_completo),
+      contacto:contacto_id(id, nombre),
+      servicio:servicio_id(id, nombre, duracion_minutos, categoria),
+      sala:sala_id(id, nombre)
+    `)
+    .eq('empresa_id', empresaId)
+    .gte('fecha_inicio', inicioHoy)
+    .lt('fecha_inicio', finHoy)
+    .order('fecha_inicio', { ascending: true })
+
+  if (rol === 'medico') {
+    query = query.eq('medico_id', usuarioId)
+  } else if (rol === 'asistente') {
+    query = query.in('medico_id', medicosAsignados)
+  }
+
+  const { data, error } = await query
+  if (error) {
+    console.error('[getCitasHoy]', error.message)
+    return []
+  }
+  return (data ?? []) as unknown as CitaHoy[]
+}
+
+export async function getAntecedentesMap(
+  empresaId: string,
+  contactoIds: string[]
+): Promise<Record<string, AntecedentePaciente>> {
+  if (contactoIds.length === 0) return {}
+
+  const supabase = await createClient()
+
+  const [
+    { data: contactos },
+    { data: alergias },
+    { data: diagnosticos },
+    { data: medicamentos },
+    { data: cirugias },
+    { data: citasPrevias },
+  ] = await Promise.all([
+    supabase
+      .from('mpaci_contactos')
+      .select('id, nombre, fecha_nacimiento, genero, prevision, telefono, email')
+      .eq('empresa_id', empresaId)
+      .in('id', contactoIds),
+    supabase
+      .from('mpaci_alergias')
+      .select('id, contacto_id, sustancia, severidad, reaccion')
+      .eq('empresa_id', empresaId)
+      .in('contacto_id', contactoIds),
+    supabase
+      .from('mpaci_diagnosticos')
+      .select('id, contacto_id, codigo_cie10, descripcion, estado, lateralidad')
+      .eq('empresa_id', empresaId)
+      .in('contacto_id', contactoIds)
+      .eq('estado', 'activo'),
+    supabase
+      .from('mpaci_medicamentos_paciente')
+      .select('id, contacto_id, nombre, nota')
+      .eq('empresa_id', empresaId)
+      .in('contacto_id', contactoIds)
+      .eq('estado', 'activo'),
+    supabase
+      .from('mpaci_cirugias_externas')
+      .select('id, contacto_id, nombre, fecha')
+      .eq('empresa_id', empresaId)
+      .in('contacto_id', contactoIds),
+    supabase
+      .from('mpaci_citas')
+      .select('id, contacto_id, fecha_inicio, estado_operativo, servicio:servicio_id(nombre)')
+      .eq('empresa_id', empresaId)
+      .in('contacto_id', contactoIds)
+      .eq('estado_operativo', 'Realizada')
+      .order('fecha_inicio', { ascending: false })
+      .limit(60),
+  ])
+
+  const result: Record<string, AntecedentePaciente> = {}
+
+  for (const c of contactos ?? []) {
+    result[c.id] = {
+      contacto_id: c.id,
+      nombre: c.nombre,
+      fecha_nacimiento: c.fecha_nacimiento,
+      genero: c.genero,
+      prevision: c.prevision,
+      telefono: c.telefono,
+      email: c.email,
+      alergias: [],
+      diagnosticos: [],
+      medicamentos: [],
+      cirugias: [],
+      citas_previas: [],
+    }
+  }
+
+  for (const a of alergias ?? []) {
+    result[a.contacto_id]?.alergias.push({
+      id: a.id,
+      sustancia: a.sustancia,
+      severidad: a.severidad,
+      reaccion: a.reaccion,
+    })
+  }
+
+  for (const d of diagnosticos ?? []) {
+    result[d.contacto_id]?.diagnosticos.push({
+      id: d.id,
+      codigo_cie10: d.codigo_cie10,
+      descripcion: d.descripcion,
+      estado: d.estado,
+      lateralidad: d.lateralidad,
+    })
+  }
+
+  for (const m of medicamentos ?? []) {
+    result[m.contacto_id]?.medicamentos.push({
+      id: m.id,
+      nombre: m.nombre,
+      nota: m.nota,
+    })
+  }
+
+  for (const c of cirugias ?? []) {
+    result[c.contacto_id]?.cirugias.push({
+      id: c.id,
+      nombre: c.nombre,
+      fecha: c.fecha,
+    })
+  }
+
+  for (const cp of citasPrevias ?? []) {
+    const servicio = (cp.servicio as unknown) as { nombre: string } | null
+    if (!cp.contacto_id || !result[cp.contacto_id]) continue
+    result[cp.contacto_id].citas_previas.push({
+      id: cp.id,
+      fecha_inicio: cp.fecha_inicio,
+      estado_operativo: cp.estado_operativo,
+      servicio_nombre: servicio?.nombre ?? null,
+    })
+  }
+
+  return result
+}
