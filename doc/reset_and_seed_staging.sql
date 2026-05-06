@@ -102,12 +102,10 @@ VALUES (
 -- ============================================================
 DO $$
 DECLARE
-    v_rec RECORD;
     v_roles TEXT[][] := ARRAY[
         ARRAY['carlos@sditecnologia.cl',        'Carlos Schatloff',       'admin_general'],
-        ARRAY['procesossdi@gmail.com',           'Dr. Rodrigo Schatloff',  'medico'],
-        ARRAY['caltamirano@manmec.cl',           'Dr. Cristóbal Altamirano','medico'],
         ARRAY['dr.schatloff@urbamed.cl',         'Dr. Schatloff',          'medico'],
+        ARRAY['caltamirano@manmec.cl',           'Dr. Cristóbal Altamirano','medico'],
         ARRAY['sditecnologiachile@gmail.com',    'Rosa Vega',              'asistente'],
         ARRAY['tattynailsbeauty@gmail.com',      'María Rojas',            'enfermera_tens']
     ];
@@ -216,7 +214,7 @@ BEGIN
     WHERE email = 'sditecnologiachile@gmail.com' AND empresa_id = 'd837f400-60b5-4b53-b0df-2b9a71b12345' LIMIT 1;
 
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = 'd837f400-60b5-4b53-b0df-2b9a71b12345' LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = 'd837f400-60b5-4b53-b0df-2b9a71b12345' LIMIT 1;
 
     SELECT id INTO v_med2 FROM public.mpaci_usuarios
     WHERE email = 'caltamirano@manmec.cl' AND empresa_id = 'd837f400-60b5-4b53-b0df-2b9a71b12345' LIMIT 1;
@@ -377,7 +375,7 @@ DECLARE
     v_suc  UUID := 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
 
     SELECT id INTO v_med2 FROM public.mpaci_usuarios
     WHERE email = 'caltamirano@manmec.cl' AND empresa_id = v_emp LIMIT 1;
@@ -731,7 +729,7 @@ DECLARE
     v_med3 UUID := 'b2000000-0000-0000-0000-000000000001'; -- Miranda (staging)
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF; -- Fallback a staging
 
     SELECT id INTO v_med2 FROM public.mpaci_usuarios
@@ -1046,7 +1044,7 @@ DECLARE
     v_emp  UUID := 'd837f400-60b5-4b53-b0df-2b9a71b12345';
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
 
     SELECT id INTO v_med2 FROM public.mpaci_usuarios
@@ -1126,7 +1124,7 @@ DECLARE
     v_med3 UUID := 'b2000000-0000-0000-0000-000000000001';
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
 
     INSERT INTO public.mpaci_anotaciones_clinicas
@@ -1153,7 +1151,7 @@ DECLARE
     v_med3 UUID := 'b2000000-0000-0000-0000-000000000001';
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
 
     INSERT INTO public.mpaci_documentos
@@ -1261,7 +1259,7 @@ DECLARE
     v_med3 UUID := 'b2000000-0000-0000-0000-000000000001';
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
 
     INSERT INTO public.mpaci_timeline_eventos
@@ -1317,7 +1315,7 @@ DECLARE
     v_med3 UUID := 'b2000000-0000-0000-0000-000000000001'; -- Miranda (staging)
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
 
     SELECT id INTO v_med2 FROM public.mpaci_usuarios
@@ -1454,7 +1452,7 @@ DECLARE
     v_admin UUID;
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
 
     SELECT id INTO v_admin FROM public.mpaci_usuarios
@@ -1554,7 +1552,7 @@ BEGIN
     IF v_asistente IS NULL THEN v_asistente := 'b2000000-0000-0000-0000-000000000002'; END IF;
 
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
-    WHERE email = 'procesossdi@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'dr.schatloff@urbamed.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
 
     SELECT id INTO v_admin FROM public.mpaci_usuarios
@@ -1733,7 +1731,7 @@ BEGIN
     RAISE NOTICE '╠══════════════════════════════════════════════╣';
     RAISE NOTICE '║ Usuarios cargados:  %', v_n_usuarios;
     RAISE NOTICE '║   → admin_general:  Carlos Schatloff        ║';
-    RAISE NOTICE '║   → medico:         Dr. Rodrigo Schatloff   ║';
+    RAISE NOTICE '║   → medico:         dr.schatloff@urbamed.cl ║';
     RAISE NOTICE '║   → medico:         Dr. Cristóbal Altamirano║';
     RAISE NOTICE '║   → asistente:      Rosa Vega               ║';
     RAISE NOTICE '║   → enfermera:      María Rojas             ║';
