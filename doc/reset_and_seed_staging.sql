@@ -1744,7 +1744,7 @@ BEGIN
          'c3000000-0000-0000-0000-000000000014',
          date_trunc('day', now()) + interval'15 days' + time'07:30',
          date_trunc('day', now()) + interval'15 days' + time'09:00',
-         'Agendada', 'confirmada', 'Abono',
+         'Agendada', 'confirmada', 'Pago parcial',
          1500000, 'isapre_cruz_blanca',
          'a1000000-0000-0000-0000-000000000001'),
 
