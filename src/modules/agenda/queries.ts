@@ -1,6 +1,18 @@
 import { createClient } from '@/utils/supabase/server'
 import type { AppRole } from '@/lib/database.types'
 
+export type ServicioCita = {
+  id: string
+  nombre: string
+  duracion_minutos: number
+  categoria: string | null
+  es_cirugia: boolean
+  descripcion_procedimiento: string | null
+  cuidados_post_op: string[] | null
+  instrucciones_pre_op: string[] | null
+  plantilla_consentimiento: string | null
+}
+
 export type CitaHoy = {
   id: string
   fecha_inicio: string
@@ -11,7 +23,7 @@ export type CitaHoy = {
   precio_base: number
   medico: { id: string; nombre_completo: string } | null
   contacto: { id: string; nombre: string } | null
-  servicio: { id: string; nombre: string; duracion_minutos: number; categoria: string | null } | null
+  servicio: ServicioCita | null
   sala: { id: string; nombre: string } | null
 }
 
@@ -76,7 +88,8 @@ export async function getCitasHoy(
       precio_base,
       medico:medico_id(id, nombre_completo),
       contacto:contacto_id(id, nombre),
-      servicio:servicio_id(id, nombre, duracion_minutos, categoria),
+      servicio:servicio_id(id, nombre, duracion_minutos, categoria, es_cirugia,
+        descripcion_procedimiento, cuidados_post_op, instrucciones_pre_op, plantilla_consentimiento),
       sala:sala_id(id, nombre)
     `)
     .eq('empresa_id', empresaId)

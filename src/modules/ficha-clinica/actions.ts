@@ -287,6 +287,336 @@ export async function guardarConsultaRapida(
   }
 }
 
+// ─── 4. Guardar procedimiento clínico ────────────────────────────────────────
+
+const ProcedimientoClinicoSchema = z.object({
+  cita_id:              z.string().min(10),
+  contacto_id:          z.string().min(10),
+  notas_medicas:        z.string().max(10_000).nullable().optional(),
+  notas_al_paciente:    z.string().max(10_000).nullable().optional(),
+  cuidados_editados:    z.array(z.string().max(300)).default([]),
+})
+
+export type ProcedimientoClinicoInput = z.infer<typeof ProcedimientoClinicoSchema>
+
+/**
+ * Persiste el formulario de Vista Procedimiento en mpaci_fichas_clinicas.
+ * notas_medicas → campo privado (no va al PDF)
+ * notas_al_paciente → contenido_texto (va al PDF)
+ * cuidados_editados → examenes_solicitados[] (controles post-op editables)
+ */
+export async function guardarProcedimientoClinico(
+  input: ProcedimientoClinicoInput,
+  empresaSlug: string
+) {
+  try {
+    const parsed = ProcedimientoClinicoSchema.parse(input)
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    const { data: usuario } = await supabase
+      .from('mpaci_usuarios')
+      .select('empresa_id, rol')
+      .eq('id', user.id)
+      .single()
+
+    if (!usuario?.empresa_id) return { error: 'Sin empresa asociada' }
+    if (!['admin', 'medico', 'admin_general'].includes(usuario.rol)) {
+      return { error: 'Sin permisos para registrar procedimientos' }
+    }
+
+    const { data: cita } = await supabase
+      .from('mpaci_citas')
+      .select('id, empresa_id')
+      .eq('id', parsed.cita_id)
+      .eq('empresa_id', usuario.empresa_id)
+      .single()
+
+    if (!cita) return { error: 'Cita no encontrada o sin acceso' }
+
+    const { data: fichaExistente } = await supabase
+      .from('mpaci_fichas_clinicas')
+      .select('id, ultima_edicion_en')
+      .eq('cita_id', parsed.cita_id)
+      .single()
+
+    if (fichaExistente) {
+      const diffHoras = (Date.now() - new Date(fichaExistente.ultima_edicion_en ?? new Date()).getTime()) / 3_600_000
+      if (diffHoras > 24 && usuario.rol !== 'admin') {
+        return { error: 'La ficha está bloqueada (más de 24h).', bloqueada: true }
+      }
+
+      const { data: updated, error: errUpdate } = await supabase
+        .from('mpaci_fichas_clinicas')
+        .update({
+          notas_medicas:        parsed.notas_medicas ?? null,
+          contenido_texto:      parsed.notas_al_paciente ?? null,
+          examenes_solicitados: parsed.cuidados_editados,
+          medico_consulta_id:   user.id,
+          ultima_edicion_en:    new Date().toISOString(),
+        })
+        .eq('id', fichaExistente.id)
+        .select('id')
+        .single()
+
+      if (errUpdate || !updated) return { error: 'Error al actualizar la ficha' }
+
+      await _registrarTimeline(supabase, {
+        empresa_id:  usuario.empresa_id,
+        contacto_id: parsed.contacto_id,
+        cita_id:     parsed.cita_id,
+        user_id:     user.id,
+        descripcion: 'Protocolo quirúrgico actualizado',
+      })
+
+      revalidatePath(`/${empresaSlug}/agenda/hoy`)
+      return { success: true, fichaId: fichaExistente.id }
+    }
+
+    const { data: nuevaFicha, error: errInsert } = await supabase
+      .from('mpaci_fichas_clinicas')
+      .insert({
+        empresa_id:           usuario.empresa_id,
+        cita_id:              parsed.cita_id,
+        contacto_id:          parsed.contacto_id,
+        medico_id:            user.id,
+        medico_consulta_id:   user.id,
+        notas_medicas:        parsed.notas_medicas ?? null,
+        contenido_texto:      parsed.notas_al_paciente ?? null,
+        examenes_solicitados: parsed.cuidados_editados,
+        ultima_edicion_en:    new Date().toISOString(),
+      })
+      .select('id')
+      .single()
+
+    if (errInsert || !nuevaFicha) return { error: errInsert?.message ?? 'Error al crear la ficha' }
+
+    await _registrarTimeline(supabase, {
+      empresa_id:  usuario.empresa_id,
+      contacto_id: parsed.contacto_id,
+      cita_id:     parsed.cita_id,
+      user_id:     user.id,
+      descripcion: 'Protocolo quirúrgico registrado',
+    })
+
+    revalidatePath(`/${empresaSlug}/agenda/hoy`)
+    return { success: true, fichaId: nuevaFicha.id }
+
+  } catch (err) {
+    if (err instanceof z.ZodError) return { error: err.issues.map(e => e.message).join(', ') }
+    console.error('[guardarProcedimientoClinico]', err)
+    return { error: 'Error inesperado' }
+  }
+}
+
+// ─── 5. Generar Protocolo PDF (Stirling PDF) ─────────────────────────────────
+
+/**
+ * Genera el PDF del protocolo quirúrgico:
+ * 1. Lee ficha + cita + servicio (con template) de la BD
+ * 2. Construye HTML
+ * 3. POST a STIRLING_PDF_URL/api/v1/convert/html/pdf
+ * 4. Sube el PDF a Supabase Storage (bucket: documentos)
+ * 5. Registra en mpaci_documentos (tipo: protocolo_quirurgico)
+ * 6. Devuelve la URL pública
+ */
+export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) {
+  const stirlingUrl = process.env.STIRLING_PDF_URL
+  if (!stirlingUrl) return { error: 'STIRLING_PDF_URL no configurado en .env' }
+
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: usuario } = await supabase
+    .from('mpaci_usuarios')
+    .select('empresa_id, nombre_completo')
+    .eq('id', user.id)
+    .single()
+
+  if (!usuario?.empresa_id) return { error: 'Sin empresa asociada' }
+
+  // Leer ficha
+  const { data: ficha } = await supabase
+    .from('mpaci_fichas_clinicas')
+    .select('id, cita_id, contenido_texto, notas_medicas, examenes_solicitados')
+    .eq('id', fichaId)
+    .single()
+
+  if (!ficha) return { error: 'Ficha no encontrada' }
+
+  // Leer cita + contacto + servicio con template
+  const { data: cita } = await supabase
+    .from('mpaci_citas')
+    .select(`
+      id, fecha_inicio,
+      contacto:contacto_id(id, nombre, rut),
+      medico:medico_id(id, nombre_completo),
+      servicio:servicio_id(
+        id, nombre,
+        descripcion_procedimiento, cuidados_post_op, plantilla_consentimiento
+      )
+    `)
+    .eq('id', ficha.cita_id)
+    .eq('empresa_id', usuario.empresa_id)
+    .single()
+
+  if (!cita) return { error: 'Cita no encontrada' }
+
+  const contacto = cita.contacto as unknown as { id: string; nombre: string; rut: string | null } | null
+  const medico   = cita.medico   as unknown as { id: string; nombre_completo: string } | null
+
+  if (!contacto?.id) return { error: 'La cita no tiene paciente asociado' }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const servicio = cita.servicio as any
+
+  const fechaFormateada = new Date(cita.fecha_inicio).toLocaleDateString('es-CL', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  })
+
+  const cuidadosLista = (ficha.examenes_solicitados ?? [])
+    .map((c: string) => `<li>${c}</li>`).join('')
+
+  const consentimiento = (servicio?.plantilla_consentimiento ?? '')
+    .replace(/{{nombre_paciente}}/g, contacto?.nombre ?? '—')
+    .replace(/{{rut_paciente}}/g, contacto?.rut ?? '—')
+    .replace(/{{nombre_medico}}/g, medico?.nombre_completo ?? '—')
+    .replace(/{{rut_medico}}/g, '—')
+    .replace(/{{fecha}}/g, fechaFormateada)
+    .replace(/\n/g, '<br>')
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; margin: 40px; }
+  h1 { font-size: 18px; color: #1e3a5f; border-bottom: 2px solid #1e3a5f; padding-bottom: 8px; }
+  h2 { font-size: 13px; color: #1e3a5f; margin-top: 20px; }
+  .header { display: flex; justify-content: space-between; margin-bottom: 24px; }
+  .badge { background: #f0f4ff; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 4px; font-size: 11px; }
+  .box { border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin: 10px 0; }
+  .consent { background: #fefce8; border: 1px solid #fde68a; border-radius: 6px; padding: 14px; margin: 20px 0; font-size: 11px; white-space: pre-wrap; }
+  ul { padding-left: 18px; }
+  li { margin-bottom: 4px; }
+  .firma { display: flex; justify-content: space-around; margin-top: 48px; }
+  .firma-item { text-align: center; }
+  .firma-linea { border-top: 1px solid #64748b; width: 200px; margin: 0 auto; padding-top: 6px; font-size: 11px; color: #64748b; }
+  .footer { margin-top: 32px; font-size: 10px; color: #94a3b8; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>PROTOCOLO QUIRÚRGICO</h1>
+      <p><strong>Procedimiento:</strong> ${servicio?.nombre ?? '—'}</p>
+    </div>
+    <div style="text-align:right">
+      <div class="badge">Fecha: ${fechaFormateada}</div>
+      <p style="margin-top:6px"><strong>Médico:</strong> ${medico?.nombre_completo ?? '—'}</p>
+    </div>
+  </div>
+
+  <h2>Datos del Paciente</h2>
+  <div class="box">
+    <strong>${contacto?.nombre ?? '—'}</strong><br>
+    RUT: ${contacto?.rut ?? '—'}
+  </div>
+
+  ${servicio?.descripcion_procedimiento ? `
+  <h2>Descripción del Procedimiento</h2>
+  <div class="box">${servicio.descripcion_procedimiento}</div>
+  ` : ''}
+
+  ${ficha.contenido_texto ? `
+  <h2>Indicaciones al Paciente</h2>
+  <div class="box">${ficha.contenido_texto.replace(/\n/g, '<br>')}</div>
+  ` : ''}
+
+  ${cuidadosLista ? `
+  <h2>Cuidados Post-Operatorios</h2>
+  <div class="box"><ul>${cuidadosLista}</ul></div>
+  ` : ''}
+
+  ${consentimiento ? `
+  <h2>Consentimiento Informado</h2>
+  <div class="consent">${consentimiento}</div>
+  ` : ''}
+
+  <div class="firma">
+    <div class="firma-item">
+      <div class="firma-linea">Firma del Médico<br>${medico?.nombre_completo ?? ''}</div>
+    </div>
+    <div class="firma-item">
+      <div class="firma-linea">Firma del Paciente<br>${contacto?.nombre ?? ''}</div>
+    </div>
+  </div>
+
+  <div class="footer">Documento generado el ${new Date().toLocaleString('es-CL')} — Mi-Paciente</div>
+</body>
+</html>`
+
+  // POST a Stirling PDF
+  let pdfBuffer: ArrayBuffer
+  try {
+    const formData = new FormData()
+    const htmlBlob = new Blob([html], { type: 'text/html' })
+    formData.append('fileInput', htmlBlob, 'protocolo.html')
+
+    const resp = await fetch(`${stirlingUrl}/api/v1/convert/html/pdf`, {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!resp.ok) {
+      const msg = await resp.text().catch(() => resp.statusText)
+      console.error('[generarProtocoloPDF] Stirling error:', msg)
+      return { error: `Error generando PDF: ${resp.status}` }
+    }
+
+    pdfBuffer = await resp.arrayBuffer()
+  } catch (err) {
+    console.error('[generarProtocoloPDF] fetch error:', err)
+    return { error: 'No se pudo conectar con el servicio de PDF' }
+  }
+
+  // Subir a Supabase Storage
+  const fileName = `protocolo_${fichaId}_${Date.now()}.pdf`
+  const storagePath = `documentos/${usuario.empresa_id}/${fileName}`
+
+  const { error: storageErr } = await supabase.storage
+    .from('documentos')
+    .upload(storagePath, pdfBuffer, { contentType: 'application/pdf', upsert: true })
+
+  if (storageErr) {
+    console.error('[generarProtocoloPDF] Storage error:', storageErr.message)
+    return { error: 'Error al guardar el PDF' }
+  }
+
+  const { data: publicUrl } = supabase.storage.from('documentos').getPublicUrl(storagePath)
+
+  // Registrar en mpaci_documentos
+  await supabase.from('mpaci_documentos').insert({
+    empresa_id:    usuario.empresa_id,
+    contacto_id:   contacto.id,
+    cita_id:       ficha.cita_id,
+    ficha_id:      fichaId,
+    tipo:          'clinico',
+    nombre:        `Protocolo ${servicio?.nombre ?? 'Procedimiento'} — ${fechaFormateada}`,
+    storage_path:  storagePath,
+    mime_type:     'application/pdf',
+    tamanio_bytes: pdfBuffer.byteLength,
+    origen:        'generado_sistema',
+    subido_por:    user.id,
+  })
+
+  revalidatePath(`/${empresaSlug}/agenda/hoy`)
+  return { success: true, url: publicUrl.publicUrl }
+}
+
 // ─── Helper timeline ──────────────────────────────────────────────────────────
 
 async function _registrarTimeline(

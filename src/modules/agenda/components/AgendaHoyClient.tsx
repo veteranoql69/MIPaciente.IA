@@ -11,6 +11,7 @@ import {
   Loader2, X, User, Save
 } from 'lucide-react'
 import type { CitaHoy, AntecedentePaciente } from '@/modules/agenda/queries'
+import { ExpansionProcedimiento } from './ExpansionProcedimiento'
 import NuevaCitaModal from './NuevaCitaModal'
 import type { SelectOption, ServicioOption, SalaOption } from './NuevaCitaModal'
 import {
@@ -947,13 +948,19 @@ export default function AgendaHoyClient({
 
                   {/* Expansión clínica inline */}
                   {isExpanded && (
-                    <ExpansionClinica
-                      antecedente={expandedAntecedente}
-                      citaId={cita.id}
-                      contactoId={cita.contacto?.id ?? ''}
-                      empresaSlug={empresaSlug}
-                      motivosCatalog={motivosCatalog}
-                    />
+                    (cita.servicio?.es_cirugia || cita.servicio?.categoria === 'procedimiento')
+                      ? <ExpansionProcedimiento
+                          cita={cita}
+                          antecedente={expandedAntecedente}
+                          empresaSlug={empresaSlug}
+                        />
+                      : <ExpansionClinica
+                          antecedente={expandedAntecedente}
+                          citaId={cita.id}
+                          contactoId={cita.contacto?.id ?? ''}
+                          empresaSlug={empresaSlug}
+                          motivosCatalog={motivosCatalog}
+                        />
                   )}
                 </div>
               )
@@ -968,7 +975,11 @@ export default function AgendaHoyClient({
           <>
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                {expandedCitaId && selectedCitaId === expandedCitaId ? 'Consulta Activa' : 'Antecedentes'}
+                {expandedCitaId && selectedCitaId === expandedCitaId
+                  ? (() => { const s = initialCitas.find(c => c.id === expandedCitaId)?.servicio; return s?.es_cirugia || s?.categoria === 'procedimiento' })()
+                    ? 'Protocolo Quirúrgico'
+                    : 'Consulta Activa'
+                  : 'Antecedentes'}
               </p>
               <button
                 onClick={() => { setSelectedCitaId(null); setExpandedCitaId(null) }}
