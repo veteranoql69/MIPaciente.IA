@@ -5,6 +5,7 @@ import {
   X, Calendar, Clock, User, Stethoscope, Building2, DoorOpen,
   Search, Shield, Loader2, CheckCircle2, Sparkles
 } from 'lucide-react'
+import { DateTime } from 'luxon'
 import { crearCita, buscarPacientes } from '@/modules/agenda/actions'
 import type { NuevaCitaInput } from '@/modules/agenda/actions'
 
@@ -38,6 +39,7 @@ type Props = {
   sucursales: SelectOption[]
   salas: SalaOption[]
   empresaSlug: string
+  timezone: string
   defaultMedicoId?: string
 }
 
@@ -77,6 +79,7 @@ export default function NuevaCitaModal({
   sucursales,
   salas,
   empresaSlug,
+  timezone,
   defaultMedicoId,
 }: Props) {
   // ── State ──
@@ -154,6 +157,9 @@ export default function NuevaCitaModal({
     }
   }, [isOpen, defaultMedicoId, sucursales])
 
+  // Solo un médico disponible → bloqueado (rol médico o asistente con 1 asignado)
+  const medicoLocked = medicos.length === 1
+
   // ── Submit ──
   const handleSubmit = () => {
     if (!selectedPaciente) { setError('Selecciona un paciente'); return }
@@ -161,7 +167,8 @@ export default function NuevaCitaModal({
     if (!servicioId) { setError('Selecciona un servicio'); return }
     if (!sucursalId) { setError('Selecciona una sucursal'); return }
 
-    const fechaInicio = `${fecha}T${hora}:00`
+    // Construir timestamp con timezone correcto para evitar desfase UTC
+    const fechaInicio = DateTime.fromISO(`${fecha}T${hora}:00`, { zone: timezone }).toISO()!
 
     const input: NuevaCitaInput = {
       contacto_id: selectedPaciente.id,
@@ -347,7 +354,8 @@ export default function NuevaCitaModal({
               <select
                 value={medicoId}
                 onChange={(e) => setMedicoId(e.target.value)}
-                className="w-full px-4 py-3 bg-white/60 border border-slate-200/60 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50 transition-all appearance-none"
+                disabled={medicoLocked}
+                className="w-full px-4 py-3 bg-white/60 border border-slate-200/60 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50 transition-all appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <option value="">Seleccionar...</option>
                 {medicos.map(m => (

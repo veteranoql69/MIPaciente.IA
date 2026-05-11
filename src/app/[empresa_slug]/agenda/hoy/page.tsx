@@ -46,11 +46,29 @@ export default async function AgendaHoyPage({ params }: Props) {
   // ── Datos para el formulario Nueva Cita ──
   const [citasRes, medicosRes, serviciosRes, sucursalesRes, salasRes] = await Promise.all([
     getCitasHoy(usuario.empresa_id, user.id, rol, medicosAsignados, timezone),
-    supabase
-      .from('mpaci_usuarios')
-      .select('id, nombre_completo')
-      .eq('empresa_id', usuario.empresa_id)
-      .eq('rol', 'medico'),
+    // Médicos visibles según rol:
+    // - medico → solo él mismo
+    // - asistente → solo sus médicos asignados
+    // - admin/admin_general → todos
+    rol === 'medico'
+      ? supabase
+          .from('mpaci_usuarios')
+          .select('id, nombre_completo')
+          .eq('id', user.id)
+          .single()
+          .then(r => ({ data: r.data ? [r.data] : [], error: r.error }))
+      : rol === 'asistente' && medicosAsignados.length > 0
+      ? supabase
+          .from('mpaci_usuarios')
+          .select('id, nombre_completo')
+          .eq('empresa_id', usuario.empresa_id)
+          .eq('rol', 'medico')
+          .in('id', medicosAsignados)
+      : supabase
+          .from('mpaci_usuarios')
+          .select('id, nombre_completo')
+          .eq('empresa_id', usuario.empresa_id)
+          .eq('rol', 'medico'),
     supabase
       .from('mpaci_servicios')
       .select('id, nombre, duracion_minutos, precio_base, categoria')
@@ -70,7 +88,7 @@ export default async function AgendaHoyPage({ params }: Props) {
   ])
 
   const citas = citasRes
-  const medicos = (medicosRes.data ?? []).map(m => ({ id: m.id, nombre: m.nombre_completo }))
+  const medicos = (medicosRes.data ?? []).map((m: { id: string; nombre_completo: string }) => ({ id: m.id, nombre: m.nombre_completo }))
   const servicios = (serviciosRes.data ?? []).map(s => ({
     id: s.id,
     nombre: s.nombre,
@@ -80,14 +98,6 @@ export default async function AgendaHoyPage({ params }: Props) {
   }))
   const sucursales = (sucursalesRes.data ?? []).map(s => ({ id: s.id, nombre: s.nombre }))
   const salas = (salasRes.data ?? []).map(s => ({ id: s.id, nombre: s.nombre, sucursal_id: s.sucursal_id }))
-
-  // TODO: Borrar después de verificar
-  console.log('[AgendaHoy] Diagnóstico formulario Nueva Cita:')
-  console.log('  médicos:', medicos.length, medicos.map(m => m.nombre))
-  console.log('  servicios:', servicios.length)
-  console.log('  sucursales:', sucursales.length)
-  console.log('  salas:', salas.length)
-  if (medicosRes.error) console.error('  ERROR médicos:', medicosRes.error.message)
 
   const contactoIds = [...new Set(
     citas.map(c => c.contacto?.id).filter(Boolean) as string[]

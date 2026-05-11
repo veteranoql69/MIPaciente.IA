@@ -31,11 +31,11 @@ export async function getAntecedenteAction(
 // ─── Schemas Zod ────────────────────────────────────────────────
 
 const NuevaCitaSchema = z.object({
-  contacto_id: z.string().uuid('Paciente requerido'),
-  medico_id: z.string().uuid('Médico requerido'),
-  servicio_id: z.string().uuid('Servicio requerido'),
-  sucursal_id: z.string().uuid('Sucursal requerida'),
-  sala_id: z.string().uuid().nullable().optional(),
+  contacto_id: z.string().min(1, 'Paciente requerido'),
+  medico_id: z.string().min(1, 'Médico requerido'),
+  servicio_id: z.string().min(1, 'Servicio requerido'),
+  sucursal_id: z.string().min(1, 'Sucursal requerida'),
+  sala_id: z.string().nullable().optional(),
   fecha_inicio: z.string().min(1, 'Fecha y hora requeridas'),
   cobertura_usada: z.string().nullable().optional(),
   notas: z.string().max(500).nullable().optional(),
@@ -74,14 +74,29 @@ export async function crearCita(input: NuevaCitaInput, empresaSlug: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'No autenticado' }
 
-    // 2. Obtener empresa_id del usuario
+    // 2. Obtener empresa_id y rol del usuario
     const { data: usuario } = await supabase
       .from('mpaci_usuarios')
-      .select('empresa_id')
+      .select('empresa_id, rol')
       .eq('id', user.id)
       .single()
 
     if (!usuario?.empresa_id) return { error: 'Sin empresa asociada' }
+
+    // 3. Validar acceso al médico según rol
+    if (usuario.rol === 'medico' && parsed.medico_id !== user.id) {
+      return { error: 'Solo puedes crear citas en tu propia agenda' }
+    }
+    if (usuario.rol === 'asistente') {
+      const { data: asignacion } = await supabase
+        .from('mpaci_asignaciones_medico')
+        .select('medico_id')
+        .eq('asistente_id', user.id)
+        .eq('medico_id', parsed.medico_id)
+        .eq('activo', true)
+        .single()
+      if (!asignacion) return { error: 'No tienes acceso a la agenda de ese médico' }
+    }
 
     // 3. Obtener duración y precio del servicio
     const { data: servicio } = await supabase

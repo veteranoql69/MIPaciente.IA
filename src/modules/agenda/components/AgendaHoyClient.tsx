@@ -1137,6 +1137,7 @@ export default function AgendaHoyClient({
         sucursales={sucursales}
         salas={salas}
         empresaSlug={empresaSlug}
+        timezone={timezone}
         defaultMedicoId={currentUserRol === 'medico' ? currentUserId : undefined}
       />
     </div>
