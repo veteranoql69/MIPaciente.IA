@@ -16,9 +16,10 @@ type Props = {
   cita: CitaHoy
   antecedente?: AntecedentePaciente
   empresaSlug: string
+  onSaved?: () => void
 }
 
-export function ExpansionProcedimiento({ cita, antecedente, empresaSlug }: Props) {
+export function ExpansionProcedimiento({ cita, antecedente, empresaSlug, onSaved }: Props) {
   const servicio = cita.servicio
   const contactoId = cita.contacto?.id ?? ''
 
@@ -78,6 +79,7 @@ export function ExpansionProcedimiento({ cita, antecedente, empresaSlug }: Props
 
       setSaveState('saved')
       if (res.fichaId) setFichaId(res.fichaId)
+      onSaved?.()
       setTimeout(() => setSaveState('idle'), 3000)
     })
   }

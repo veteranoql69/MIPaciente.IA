@@ -24,6 +24,13 @@ export default async function AgendaHoyPage({ params }: Props) {
 
   if (!usuario?.empresa_id) redirect('/unauthorized')
 
+  const { data: empresa } = await supabase
+    .from('mpaci_empresas')
+    .select('timezone')
+    .eq('id', usuario.empresa_id)
+    .single()
+  const timezone: string = empresa?.timezone ?? 'America/Santiago'
+
   let medicosAsignados: string[] = []
   if (usuario.rol === 'asistente') {
     const { data } = await supabase
@@ -38,7 +45,7 @@ export default async function AgendaHoyPage({ params }: Props) {
 
   // ── Datos para el formulario Nueva Cita ──
   const [citasRes, medicosRes, serviciosRes, sucursalesRes, salasRes] = await Promise.all([
-    getCitasHoy(usuario.empresa_id, user.id, rol, medicosAsignados),
+    getCitasHoy(usuario.empresa_id, user.id, rol, medicosAsignados, timezone),
     supabase
       .from('mpaci_usuarios')
       .select('id, nombre_completo')
@@ -106,6 +113,7 @@ export default async function AgendaHoyPage({ params }: Props) {
       antecedentes={antecedentes}
       usuarioRol={rol as 'admin_general' | 'admin' | 'medico' | 'asistente' | 'enfermera_tens' | 'externo' | 'gerente' | 'sistema'}
       empresaSlug={empresa_slug}
+      timezone={timezone}
       formattedDate={formattedDate}
       showMedico={showMedico}
       medicos={medicos}

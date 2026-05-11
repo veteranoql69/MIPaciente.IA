@@ -89,6 +89,7 @@ export interface Database {
           plan_suscripcion: string | null
           activo: boolean | null
           bloque_base_min: number
+          timezone: string
           creado_en: string | null
         }
         Insert: {
@@ -98,6 +99,7 @@ export interface Database {
           plan_suscripcion?: string | null
           activo?: boolean | null
           bloque_base_min?: number
+          timezone?: string
           creado_en?: string | null
         }
         Update: {
@@ -107,6 +109,7 @@ export interface Database {
           plan_suscripcion?: string | null
           activo?: boolean | null
           bloque_base_min?: number
+          timezone?: string
           creado_en?: string | null
         }
         Relationships: []

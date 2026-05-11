@@ -250,6 +250,7 @@ export async function guardarConsultaRapida(
       .insert({
         empresa_id:            usuario.empresa_id,
         cita_id:               parsed.cita_id,
+        contacto_id:           parsed.contacto_id,
         motivos_consulta_ids:  parsed.motivos_consulta_ids,
         notas_medicas:         parsed.notas_medicas ?? null,
         examenes_solicitados:  parsed.examenes_solicitados,

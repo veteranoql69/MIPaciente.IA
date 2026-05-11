@@ -5,6 +5,28 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { crearEvento } from '@/modules/agenda/gcal'
 import { revalidatePath } from 'next/cache'
+import { getAntecedenteUnico } from './queries'
+import type { AntecedentePaciente } from './queries'
+
+// ─── Antecedente único (live refresh desde cliente tras guardar consulta) ─────
+
+export async function getAntecedenteAction(
+  contactoId: string
+): Promise<AntecedentePaciente | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: usuario } = await supabase
+    .from('mpaci_usuarios')
+    .select('empresa_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!usuario?.empresa_id) return null
+
+  return getAntecedenteUnico(usuario.empresa_id, contactoId)
+}
 
 // ─── Schemas Zod ────────────────────────────────────────────────
 

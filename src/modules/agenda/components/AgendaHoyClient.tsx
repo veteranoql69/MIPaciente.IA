@@ -8,16 +8,19 @@ import {
   AlertTriangle, ChevronDown, ChevronUp, Pill, Stethoscope,
   Scissors, CheckCircle2, MoreHorizontal, Search,
   Filter, Plus, Activity, Zap, FileText, FlaskConical,
-  Loader2, X, User, Save
+  Loader2, X, User, Save, RotateCcw
 } from 'lucide-react'
 import type { CitaHoy, AntecedentePaciente } from '@/modules/agenda/queries'
 import { ExpansionProcedimiento } from './ExpansionProcedimiento'
+import { AgendaViewNav } from './AgendaViewNav'
 import NuevaCitaModal from './NuevaCitaModal'
 import type { SelectOption, ServicioOption, SalaOption } from './NuevaCitaModal'
 import {
   guardarConsultaRapida,
   agregarMotivoConsulta,
 } from '@/modules/ficha-clinica/actions'
+import { getAntecedenteAction } from '@/modules/agenda/actions'
+import { resetDemoDataAction } from '@/modules/admin/actions'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +31,7 @@ type Props = {
   antecedentes: Record<string, AntecedentePaciente>
   usuarioRol: AppRoleSimple
   empresaSlug: string
+  timezone: string
   formattedDate: string
   showMedico: boolean
   medicos: SelectOption[]
@@ -41,9 +45,9 @@ type Props = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatTime(iso: string) {
+function formatTime(iso: string, tz: string) {
   return new Date(iso).toLocaleTimeString('es-CL', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago',
+    hour: '2-digit', minute: '2-digit', timeZone: tz,
   })
 }
 
@@ -289,6 +293,35 @@ function PanelAntecedentes({ data }: { data: AntecedentePaciente }) {
         </section>
       )}
 
+      {/* Fichas clínicas recientes */}
+      {data.fichas_recientes.length > 0 && (
+        <section>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Fichas Clínicas</p>
+          <div className="space-y-2">
+            {data.fichas_recientes.slice(0, 5).map((f) => (
+              <div key={f.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1.5">
+                <p className="text-[10px] text-slate-400">{formatFecha(f.fecha)}</p>
+                {f.notas_medicas && (
+                  <p className="text-xs text-slate-700 leading-snug line-clamp-3">{f.notas_medicas}</p>
+                )}
+                {f.examenes_solicitados.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {f.examenes_solicitados.slice(0, 4).map((e, i) => (
+                      <span key={i} className="px-1.5 py-0.5 bg-teal-50 text-teal-700 border border-teal-100 text-[10px] font-semibold rounded-md">
+                        {e}
+                      </span>
+                    ))}
+                    {f.examenes_solicitados.length > 4 && (
+                      <span className="text-[10px] text-slate-400">+{f.examenes_solicitados.length - 4}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Resumen IA — placeholder */}
       <section className="border border-dashed border-indigo-200 rounded-xl p-3 bg-indigo-50/40">
         <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1 flex items-center gap-1">
@@ -348,7 +381,32 @@ function PanelHistorial({ data }: { data: AntecedentePaciente }) {
         </div>
       )}
 
-      {data.citas_previas.length === 0 && data.diagnosticos.length === 0 && (
+      {data.fichas_recientes.length > 0 && (
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Fichas Recientes</p>
+          <div className="space-y-2">
+            {data.fichas_recientes.slice(0, 3).map((f) => (
+              <div key={f.id} className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 space-y-1">
+                <p className="text-[10px] text-slate-400">{formatFecha(f.fecha)}</p>
+                {f.notas_medicas && (
+                  <p className="text-xs text-slate-600 leading-snug line-clamp-2">{f.notas_medicas}</p>
+                )}
+                {f.examenes_solicitados.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {f.examenes_solicitados.slice(0, 3).map((e, i) => (
+                      <span key={i} className="px-1.5 py-0.5 bg-teal-50 text-teal-600 text-[10px] font-semibold rounded">
+                        {e}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.citas_previas.length === 0 && data.diagnosticos.length === 0 && data.fichas_recientes.length === 0 && (
         <p className="text-xs text-slate-400 text-center py-4">Sin historial previo registrado</p>
       )}
     </div>
@@ -417,9 +475,10 @@ type ExpansionClinicaProps = {
   contactoId: string
   empresaSlug: string
   motivosCatalog: { id: string; nombre: string; orden: number }[]
+  onSaved?: () => void
 }
 
-function ExpansionClinica({ antecedente, citaId, contactoId, empresaSlug, motivosCatalog }: ExpansionClinicaProps) {
+function ExpansionClinica({ antecedente, citaId, contactoId, empresaSlug, motivosCatalog, onSaved }: ExpansionClinicaProps) {
   const [isPending, startTransition] = useTransition()
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error' | 'bloqueada'>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -513,6 +572,7 @@ function ExpansionClinica({ antecedente, citaId, contactoId, empresaSlug, motivo
       } else {
         setSaveState('saved')
         setSaved(true)
+        onSaved?.()
       }
     })
   }
@@ -750,6 +810,7 @@ export default function AgendaHoyClient({
   antecedentes: initialAntecedentes,
   usuarioRol,
   empresaSlug,
+  timezone,
   formattedDate,
   showMedico,
   medicos,
@@ -764,7 +825,31 @@ export default function AgendaHoyClient({
   const [selectedCitaId, setSelectedCitaId] = useState<string | null>(null)
   const [expandedCitaId, setExpandedCitaId] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<'todos' | 'confirmados' | 'pendientes'>('todos')
+  const [antecedentes, setAntecedentes] = useState(initialAntecedentes)
+  const [demoState, setDemoState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [demoMsg, setDemoMsg] = useState<string | null>(null)
   const clickTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  const refreshAntecedente = useCallback(async (contactoId: string) => {
+    const updated = await getAntecedenteAction(contactoId)
+    if (updated) setAntecedentes(prev => ({ ...prev, [contactoId]: updated }))
+  }, [])
+
+  const handleResetDemo = useCallback(async () => {
+    if (demoState === 'loading') return
+    setDemoState('loading')
+    setDemoMsg(null)
+    const res = await resetDemoDataAction(empresaSlug)
+    if (res.ok) {
+      setDemoState('ok')
+      setDemoMsg('Agenda de demo restaurada')
+      setTimeout(() => setDemoState('idle'), 3000)
+    } else {
+      setDemoState('error')
+      setDemoMsg(res.message)
+      setTimeout(() => setDemoState('idle'), 4000)
+    }
+  }, [demoState, empresaSlug])
 
   const confirmadas = initialCitas.filter(c => c.estado_operativo === 'Agendada' && c.estado_confirmacion === 'confirmada').length
   const porConfirmar = initialCitas.filter(c => c.estado_operativo === 'Agendada' && c.estado_confirmacion === 'no_confirmada').length
@@ -790,9 +875,9 @@ export default function AgendaHoyClient({
 
   const selectedCita = initialCitas.find(c => c.id === selectedCitaId)
   const selectedContactoId = selectedCita?.contacto?.id ?? null
-  const selectedAntecedente = selectedContactoId ? initialAntecedentes[selectedContactoId] : null
+  const selectedAntecedente = selectedContactoId ? antecedentes[selectedContactoId] : null
   const expandedCita = initialCitas.find(c => c.id === expandedCitaId)
-  const expandedAntecedente = expandedCita?.contacto?.id ? initialAntecedentes[expandedCita.contacto.id] : undefined
+  const expandedAntecedente = expandedCita?.contacto?.id ? antecedentes[expandedCita.contacto.id] : undefined
 
   return (
     <div className="flex h-screen bg-slate-50/50 overflow-hidden">
@@ -801,6 +886,13 @@ export default function AgendaHoyClient({
 
       {/* ── Columna central: lista de citas ── */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Vista nav (Día / Semana / Mes) */}
+        <AgendaViewNav
+          empresaSlug={empresaSlug}
+          fechaLabel={formattedDate}
+          prevHref={`/${empresaSlug}/agenda/hoy`}
+          nextHref={`/${empresaSlug}/agenda/hoy`}
+        />
         {/* Header */}
         <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-6 py-4">
           <div className="flex items-center justify-between gap-4">
@@ -812,6 +904,34 @@ export default function AgendaHoyClient({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Botón demo — admin_general y medico, solo empresa demo */}
+              {(usuarioRol === 'admin_general' || usuarioRol === 'medico') && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleResetDemo}
+                    disabled={demoState === 'loading'}
+                    title="Restaurar citas de demo para hoy"
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                      demoState === 'loading'
+                        ? 'text-slate-400 border-slate-200 bg-slate-50 cursor-wait'
+                        : demoState === 'ok'
+                        ? 'text-emerald-600 border-emerald-200 bg-emerald-50'
+                        : demoState === 'error'
+                        ? 'text-red-500 border-red-200 bg-red-50'
+                        : 'text-slate-500 border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200'
+                    }`}
+                  >
+                    {demoState === 'loading'
+                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Restaurando...</>
+                      : demoState === 'ok'
+                      ? <><CheckCircle2 className="w-3.5 h-3.5" /> {demoMsg}</>
+                      : demoState === 'error'
+                      ? <><AlertTriangle className="w-3.5 h-3.5" /> {demoMsg}</>
+                      : <><RotateCcw className="w-3.5 h-3.5" /> Restaurar Demo</>
+                    }
+                  </button>
+                </div>
+              )}
               <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all">
                 <Filter className="w-4 h-4" />
               </button>
@@ -870,7 +990,7 @@ export default function AgendaHoyClient({
               const isSelected = selectedCitaId === cita.id
               const isExpanded = expandedCitaId === cita.id
               const contactoId = cita.contacto?.id ?? null
-              const ant = contactoId ? initialAntecedentes[contactoId] : null
+              const ant = contactoId ? antecedentes[contactoId] : null
 
               return (
                 <div key={cita.id}>
@@ -888,7 +1008,7 @@ export default function AgendaHoyClient({
 
                     {/* Hora */}
                     <div className="flex flex-col items-center w-16 border-r border-slate-100 pr-4 shrink-0">
-                      <span className="text-base font-black text-slate-900 leading-none">{formatTime(cita.fecha_inicio)}</span>
+                      <span className="text-base font-black text-slate-900 leading-none">{formatTime(cita.fecha_inicio, timezone)}</span>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1">
                         {calcDuracion(cita.fecha_inicio, cita.fecha_fin)}
                       </span>
@@ -953,6 +1073,7 @@ export default function AgendaHoyClient({
                           cita={cita}
                           antecedente={expandedAntecedente}
                           empresaSlug={empresaSlug}
+                          onSaved={cita.contacto?.id ? () => refreshAntecedente(cita.contacto!.id) : undefined}
                         />
                       : <ExpansionClinica
                           antecedente={expandedAntecedente}
@@ -960,6 +1081,7 @@ export default function AgendaHoyClient({
                           contactoId={cita.contacto?.id ?? ''}
                           empresaSlug={empresaSlug}
                           motivosCatalog={motivosCatalog}
+                          onSaved={cita.contacto?.id ? () => refreshAntecedente(cita.contacto!.id) : undefined}
                         />
                   )}
                 </div>

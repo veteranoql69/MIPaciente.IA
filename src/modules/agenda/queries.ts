@@ -64,19 +64,76 @@ export type AntecedentePaciente = {
     estado_operativo: string
     servicio_nombre: string | null
   }[]
+  fichas_recientes: {
+    id: string
+    cita_id: string
+    fecha: string
+    motivos_consulta_ids: string[]
+    notas_medicas: string | null
+    examenes_solicitados: string[]
+    notas_examenes: string | null
+    examen_fisico: Record<string, unknown> | null
+  }[]
+}
+
+// ─── Query genérica por rango de fechas ──────────────────────────────────────
+
+export async function getCitasRango(
+  empresaId: string,
+  usuarioId: string,
+  rol: AppRole,
+  medicosAsignados: string[],
+  inicio: string,
+  fin: string
+): Promise<CitaHoy[]> {
+  const supabase = await createClient()
+
+  if (rol === 'asistente' && medicosAsignados.length === 0) return []
+
+  let query = supabase
+    .from('mpaci_citas')
+    .select(`
+      id, fecha_inicio, fecha_fin,
+      estado_operativo, estado_confirmacion, estado_pago,
+      precio_base,
+      medico:medico_id(id, nombre_completo),
+      contacto:contacto_id(id, nombre),
+      servicio:servicio_id(id, nombre, duracion_minutos, categoria, es_cirugia,
+        descripcion_procedimiento, cuidados_post_op, instrucciones_pre_op, plantilla_consentimiento),
+      sala:sala_id(id, nombre)
+    `)
+    .eq('empresa_id', empresaId)
+    .gte('fecha_inicio', inicio)
+    .lt('fecha_inicio', fin)
+    .order('fecha_inicio', { ascending: true })
+
+  if (rol === 'medico') {
+    query = query.eq('medico_id', usuarioId)
+  } else if (rol === 'asistente') {
+    query = query.in('medico_id', medicosAsignados)
+  }
+
+  const { data, error } = await query
+  if (error) {
+    console.error('[getCitasRango]', error.message)
+    return []
+  }
+  return (data ?? []) as unknown as CitaHoy[]
 }
 
 export async function getCitasHoy(
   empresaId: string,
   usuarioId: string,
   rol: AppRole,
-  medicosAsignados: string[]
+  medicosAsignados: string[],
+  timezone = 'America/Santiago'
 ): Promise<CitaHoy[]> {
   const supabase = await createClient()
 
-  const hoy = new Date()
-  const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()).toISOString()
-  const finHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 1).toISOString()
+  const { DateTime } = await import('luxon')
+  const hoyTz = DateTime.now().setZone(timezone)
+  const inicioHoy = hoyTz.startOf('day').toUTC().toISO()!
+  const finHoy   = hoyTz.plus({ days: 1 }).startOf('day').toUTC().toISO()!
 
   if (rol === 'asistente' && medicosAsignados.length === 0) return []
 
@@ -126,6 +183,7 @@ export async function getAntecedentesMap(
     { data: medicamentos },
     { data: cirugias },
     { data: citasPrevias },
+    { data: fichas },
   ] = await Promise.all([
     supabase
       .from('mpaci_contactos')
@@ -162,6 +220,13 @@ export async function getAntecedentesMap(
       .eq('estado_operativo', 'Realizada')
       .order('fecha_inicio', { ascending: false })
       .limit(60),
+    supabase
+      .from('mpaci_fichas_clinicas')
+      .select('id, cita_id, contacto_id, ultima_edicion_en, motivos_consulta_ids, notas_medicas, examenes_solicitados, notas_examenes, examen_fisico')
+      .eq('empresa_id', empresaId)
+      .in('contacto_id', contactoIds)
+      .order('ultima_edicion_en', { ascending: false })
+      .limit(20),
   ])
 
   const result: Record<string, AntecedentePaciente> = {}
@@ -180,6 +245,7 @@ export async function getAntecedentesMap(
       medicamentos: [],
       cirugias: [],
       citas_previas: [],
+      fichas_recientes: [],
     }
   }
 
@@ -229,5 +295,29 @@ export async function getAntecedentesMap(
     })
   }
 
+  for (const f of fichas ?? []) {
+    if (!f.contacto_id || !result[f.contacto_id]) continue
+    result[f.contacto_id].fichas_recientes.push({
+      id: f.id,
+      cita_id: f.cita_id,
+      fecha: f.ultima_edicion_en ?? '',
+      motivos_consulta_ids: (f.motivos_consulta_ids as string[]) ?? [],
+      notas_medicas: f.notas_medicas ?? null,
+      examenes_solicitados: (f.examenes_solicitados as string[]) ?? [],
+      notas_examenes: f.notas_examenes ?? null,
+      examen_fisico: (f.examen_fisico as Record<string, unknown>) ?? null,
+    })
+  }
+
   return result
+}
+
+// ─── Antecedente único (para actualización live en cliente) ──────────────────
+
+export async function getAntecedenteUnico(
+  empresaId: string,
+  contactoId: string
+): Promise<AntecedentePaciente | null> {
+  const map = await getAntecedentesMap(empresaId, [contactoId])
+  return map[contactoId] ?? null
 }
