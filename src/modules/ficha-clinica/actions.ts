@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { createClient } from '@/utils/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 
 // ─── Schemas Zod ─────────────────────────────────────────────────────────────
@@ -426,6 +427,7 @@ export async function guardarProcedimientoClinico(
 export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) {
   const stirlingUrl = process.env.STIRLING_PDF_URL
   if (!stirlingUrl) return { error: 'STIRLING_PDF_URL no configurado en .env' }
+  const stirlingApiKey = process.env.STIRLING_PDF_API_KEY
 
   const supabase = await createClient()
 
@@ -567,8 +569,12 @@ export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) 
     const htmlBlob = new Blob([html], { type: 'text/html' })
     formData.append('fileInput', htmlBlob, 'protocolo.html')
 
+    const headers: Record<string, string> = {}
+    if (stirlingApiKey) headers['X-API-Key'] = stirlingApiKey
+
     const resp = await fetch(`${stirlingUrl}/api/v1/convert/html/pdf`, {
       method: 'POST',
+      headers,
       body: formData,
     })
 
@@ -584,20 +590,25 @@ export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) 
     return { error: 'No se pudo conectar con el servicio de PDF' }
   }
 
-  // Subir a Supabase Storage
+  // Subir a Supabase Storage con Service Role para evadir RLS de Storage
   const fileName = `protocolo_${fichaId}_${Date.now()}.pdf`
   const storagePath = `documentos/${usuario.empresa_id}/${fileName}`
 
-  const { error: storageErr } = await supabase.storage
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { error: storageErr } = await supabaseAdmin.storage
     .from('documentos')
     .upload(storagePath, pdfBuffer, { contentType: 'application/pdf', upsert: true })
 
   if (storageErr) {
     console.error('[generarProtocoloPDF] Storage error:', storageErr.message)
-    return { error: 'Error al guardar el PDF' }
+    return { error: 'Error al guardar el PDF en el servidor' }
   }
 
-  const { data: publicUrl } = supabase.storage.from('documentos').getPublicUrl(storagePath)
+  const { data: publicUrl } = supabaseAdmin.storage.from('documentos').getPublicUrl(storagePath)
 
   // Registrar en mpaci_documentos
   await supabase.from('mpaci_documentos').insert({
@@ -615,7 +626,12 @@ export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) 
   })
 
   revalidatePath(`/${empresaSlug}/agenda/hoy`)
-  return { success: true, url: publicUrl.publicUrl }
+  return { 
+    success: true, 
+    url: publicUrl.publicUrl, 
+    fileName, 
+    base64: Buffer.from(pdfBuffer).toString('base64') 
+  }
 }
 
 // ─── Helper timeline ──────────────────────────────────────────────────────────

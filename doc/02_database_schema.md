@@ -21,7 +21,8 @@ auth.users (Manejado por Supabase GoTrue Auth interno)
         └── mpaci_asignaciones_medico (asistente_id, medico_id)               [00048]
 
 mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
-                bloque_base_min [10,15,20])                             [00039]
+                bloque_base_min [10,15,20],                            [00039]
+                timezone TEXT DEFAULT 'America/Santiago')              [00053]
     │
     ├── mpaci_invitaciones (email, rol, codigo, expires_at, usado)           [00046]
     │
@@ -60,7 +61,8 @@ mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
     │       ├── mpaci_fichas_clinicas (contenido_texto [DEPRECATED]) [LOCK 24h] [00050]
     │       │       +motivos_consulta_ids[], +notas_medicas, +examenes_solicitados[],
     │       │       +notas_examenes, +examen_fisico (JSONB), +fotos_examenes_paths[],
-    │       │       +medico_id (owner), +medico_consulta_id (performer), +ultima_edicion_en
+    │       │       +medico_id (owner), +medico_consulta_id (performer), +ultima_edicion_en,
+    │       +contacto_id FK→mpaci_contactos (backfill desde cita_id)   [00055]
     │       │       ─ Vista Procedimiento (cuando es_cirugia=true):
     │       │           notas_medicas → "Notas Internas" (solo médico)
     │       │           contenido_texto → "Notas al Paciente" (va al PDF)
@@ -170,4 +172,9 @@ Cuando `mpaci_servicios.es_cirugia = true` o `categoria IN ('cirugia','procedimi
 | **00038–00041** | **Operación: Recursos sede, notas agenda, bloque base configurable, catálogos CIE-10/Med.** |
 | **00042–00049** | **Optimización y ABAC: Reasignaciones, marketing, invitaciones, permisos granulares y Tokens Externos (GCal).** |
 | **00050** | **Consulta Rápida Clínica: mpaci_motivos_consulta + 8 columnas en mpaci_fichas_clinicas (motivos, notas, exámenes, examen físico, fotos). Función calcular_imc().** |
-| **00051** | **Templates Procedimiento Quirúrgico: 4 columnas en mpaci_servicios (descripcion_procedimiento TEXT, cuidados_post_op TEXT[], instrucciones_pre_op TEXT[], plantilla_consentimiento TEXT). Pobladas para 12 servicios del catálogo Urbamed. Alimentan la Vista Procedimiento de la agenda y el PDF de consentimiento via Stirling PDF.** |
+| **00051** | **Templates Procedimiento Quirúrgico: 4 columnas en mpaci_servicios (descripcion_procedimiento TEXT, cuidados_post_op TEXT[], instrucciones_pre_op TEXT[], plantilla_consentimiento TEXT). Pobladas para 12 servicios del catálogo Urbamed.** |
+| **00052** | **Función reset_demo_staging(): restaura 7 citas demo para el día actual. Usada por el botón "Restaurar Demo" (roles admin_general y medico).** |
+| **00053** | **timezone TEXT en mpaci_empresas: soporte multi-país SaaS. Default 'America/Santiago'. Toda la lógica de fechas usa esta columna vía luxon (src/lib/dates.ts).** |
+| **00054** | **Fix timezone en reset_demo_staging(): timezone(zone, ts) en lugar de ts AT TIME ZONE zone. El error anterior desplazaba las citas 4h hacia el pasado (UTC vs local).** |
+| **00055** | **contacto_id en mpaci_fichas_clinicas: FK a mpaci_contactos con backfill desde cita_id. Habilita query de fichas por paciente sin JOIN a mpaci_citas. Índice idx_fichas_clinicas_contacto_id.** |
+| **00056** | **RLS INSERT y UPDATE para mpaci_citas: admin/admin_general sin restricción, médico solo su propia agenda, asistente solo médicos asignados en mpaci_asignaciones_medico.** |

@@ -16,5 +16,14 @@ Bienvenido a la carpeta de documentación oficial de **Mi-Paciente.com**. Esta d
 4. [Roadmap de Sprints](04_sprint_roadmap.md)
    El plan de ejecución de 180 días (12 Sprints), desde la infraestructura base hasta QA en producción.
 
+5. [Arquitectura de Seguridad y RLS](05_arquitectura_seguridad.md)
+   Lecciones aprendidas, resolución de recursión infinita en RLS y políticas de aislamiento.
+
+6. [Onboarding e Invitaciones](06_onboarding_invitaciones.md)
+   Flujo de registro de empresas y sistema de invitaciones por rol.
+
+7. [Control AI con Langfuse](07_langfuse_ai_control.md)
+   Estrategia de desacoplamiento de IA, gestión de prompts y observabilidad.
+
 ---
-**Nota:** Estos documentos reflejan el estado de diseño y desarrollo del proyecto (Actualizado al 16 de Abril, 2026). Cualquier cambio arquitectónico, regla de negocio o adición de modelos debe actualizarse directamente en los archivos correspondientes.
+**Nota:** Estos documentos reflejan el estado de diseño y desarrollo del proyecto (Actualizado al 11 de Mayo, 2026). Cualquier cambio arquitectónico, regla de negocio o adición de modelos debe actualizarse directamente en los archivos correspondientes.

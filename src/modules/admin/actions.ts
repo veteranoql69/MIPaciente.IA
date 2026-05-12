@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function resetDemoDataAction(empresaSlug: string): Promise<{ ok: boolean; message: string }> {
@@ -32,14 +31,38 @@ export async function resetDemoDataAction(empresaSlug: string): Promise<{ ok: bo
     return { ok: false, message: 'Esta función solo está disponible en el ambiente de demo' }
   }
 
-  const admin = createAdminClient()
-  const { data, error } = await admin.rpc('reset_demo_staging')
-
-  if (error) {
-    console.error('[resetDemoData]', error.message)
-    return { ok: false, message: error.message }
+  // 2. Llamada a n8n para el Reset Completo
+  const webhookUrl = process.env.N8N_RESTORE_DEMO_WEBHOOK_URL
+  if (!webhookUrl) {
+    return { ok: false, message: 'Webhook de n8n no configurado' }
   }
 
-  revalidatePath(`/${empresaSlug}/agenda/hoy`)
-  return { ok: true, message: String(data) }
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'restore_demo_full',
+        empresa_id: usuario.empresa_id,
+        empresa_slug: empresaSlug,
+        usuario_email: user.email,
+        timestamp: new Date().toISOString()
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`n8n error: ${response.statusText}`)
+    }
+
+    // Esperamos la respuesta de n8n (puedes configurar n8n para que responda 
+    // "Proceso iniciado" de inmediato o esperar al final)
+    const result = await response.json().catch(() => ({ message: 'Reset iniciado correctamente' }))
+
+    revalidatePath(`/${empresaSlug}/agenda/hoy`)
+    return { ok: true, message: result.message || 'Restauración completa iniciada' }
+
+  } catch (err: any) {
+    console.error('[resetDemoData n8n]', err.message)
+    return { ok: false, message: 'Error al conectar con n8n' }
+  }
 }
