@@ -1,17 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { Database } from '@/lib/database.types'
-import fs from 'fs'
-import path from 'path'
 
 function logDebug(msg: string) {
-  const logPath = path.join(process.cwd(), 'doc', 'proxy_debug.log')
-  const timestamp = new Date().toISOString()
-  try {
-    fs.appendFileSync(logPath, `[${timestamp}] ${msg}\n`)
-  } catch (e) {
-    console.error('Failed to write log:', e)
-  }
+  console.log('[Proxy]', msg)
 }
 
 const PUBLIC_PATHS = ['/login', '/auth', '/unauthorized']

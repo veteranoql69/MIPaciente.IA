@@ -106,7 +106,7 @@ DECLARE
         ARRAY['carlos@sditecnologia.cl',        'Carlos Schatloff',       'admin_general'],
         ARRAY['mipaciente.demo@gmail.com',         'Dr. Schatloff',          'medico'],
         ARRAY['caltamirano@manmec.cl',           'Dr. Cristóbal Altamirano','medico'],
-        ARRAY['sditecnologiachile@gmail.com',    'Rosa Vega',              'asistente'],
+        ARRAY['asistenteclinicaurbamed@gmail.com',    'Rosa Vega',              'asistente'],
         ARRAY['tattynailsbeauty@gmail.com',      'María Rojas',            'enfermera_tens']
     ];
     v_entry TEXT[];
@@ -184,7 +184,7 @@ VALUES
     ('b2000000-0000-0000-0000-000000000001', 'dra.miranda@staging.test',
      'Dra. Carmen Miranda', 'd837f400-60b5-4b53-b0df-2b9a71b12345', 'medico', true),
 
-    -- Staging: evitar colisión con Rosa Vega real (sditecnologiachile@gmail.com)
+    -- Staging: evitar colisión con Rosa Vega real (asistenteclinicaurbamed@gmail.com)
     ('b2000000-0000-0000-0000-000000000002', 'arsenalera.staging@staging.test',
      'Ana Valentina Ríos', 'd837f400-60b5-4b53-b0df-2b9a71b12345', 'enfermera_tens', true),
 
@@ -211,7 +211,7 @@ DECLARE
     v_med2 UUID;
 BEGIN
     SELECT id INTO v_asistente FROM public.mpaci_usuarios
-    WHERE email = 'sditecnologiachile@gmail.com' AND empresa_id = 'd837f400-60b5-4b53-b0df-2b9a71b12345' LIMIT 1;
+    WHERE email = 'asistenteclinicaurbamed@gmail.com' AND empresa_id = 'd837f400-60b5-4b53-b0df-2b9a71b12345' LIMIT 1;
 
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
     WHERE email = 'mipaciente.demo@gmail.com' AND empresa_id = 'd837f400-60b5-4b53-b0df-2b9a71b12345' LIMIT 1;
@@ -727,6 +727,11 @@ DECLARE
     v_med1 UUID; -- Schatloff
     v_med2 UUID; -- Altamirano
     v_med3 UUID := 'b2000000-0000-0000-0000-000000000001'; -- Miranda (staging)
+    -- Medianoche de HOY en Santiago → evita el bug UTC donde +time'HH:MM' suma
+    -- horas sobre medianoche UTC (≠ medianoche Santiago, diff -4h en mayo)
+    v_hoy  TIMESTAMPTZ;
+    -- Lunes de la semana actual en Santiago (para citas de próxima semana)
+    v_sem  TIMESTAMPTZ;
 BEGIN
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
     WHERE email = 'mipaciente.demo@gmail.com' AND empresa_id = v_emp LIMIT 1;
@@ -735,6 +740,13 @@ BEGIN
     SELECT id INTO v_med2 FROM public.mpaci_usuarios
     WHERE email = 'caltamirano@manmec.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med2 IS NULL THEN v_med2 := v_med3; END IF;
+
+    -- Medianoche local Santiago → convierte correctamente a UTC
+    v_hoy := timezone('America/Santiago', current_date::timestamp);
+    -- Lunes de la semana actual según la fecha local de Santiago
+    v_sem := timezone('America/Santiago',
+        date_trunc('week', (current_timestamp AT TIME ZONE 'America/Santiago'))::timestamp
+    );
 
     -- ── PASADAS (hace 30-7 días) ─────────────────────────────
 
@@ -854,49 +866,49 @@ BEGIN
         ('99000000-0000-0000-0000-000000000016', v_emp, v_suc, v_med1,
          'd4000000-0000-0000-0000-000000000001',
          'c3000000-0000-0000-0000-000000000005',
-         date_trunc('day',now())+time'08:00', date_trunc('day',now())+time'09:00',
+         v_hoy + interval '8 hours', v_hoy + interval '9 hours',
          'Agendada','confirmada','No pagado', 1800000, 'fonasa',
          'a1000000-0000-0000-0000-000000000001'),
 
         ('99000000-0000-0000-0000-000000000017', v_emp, v_suc, v_med1,
          'd4000000-0000-0000-0000-000000000008',
          'c3000000-0000-0000-0000-000000000009',
-         date_trunc('day',now())+time'09:00', date_trunc('day',now())+time'10:30',
+         v_hoy + interval '9 hours', v_hoy + interval '10 hours 30 minutes',
          'Agendada','confirmada','No pagado', 2200000, 'particular',
          'a1000000-0000-0000-0000-000000000001'),
 
         ('99000000-0000-0000-0000-000000000018', v_emp, v_suc, v_med1,
          'd4000000-0000-0000-0000-000000000006',
          'c3000000-0000-0000-0000-000000000010',
-         date_trunc('day',now())+time'10:30', date_trunc('day',now())+time'10:45',
+         v_hoy + interval '10 hours 30 minutes', v_hoy + interval '10 hours 45 minutes',
          'Agendada','confirmada','No pagado', 30000, 'fonasa',
          'a1000000-0000-0000-0000-000000000002'),
 
         ('99000000-0000-0000-0000-000000000019', v_emp, v_suc, v_med2,
          'd4000000-0000-0000-0000-000000000003',
          'c3000000-0000-0000-0000-000000000003',
-         date_trunc('day',now())+time'08:00', date_trunc('day',now())+time'08:25',
+         v_hoy + interval '8 hours', v_hoy + interval '8 hours 25 minutes',
          'Agendada','no_confirmada','No pagado', 590000, 'fonasa',
          'a1000000-0000-0000-0000-000000000001'),
 
         ('99000000-0000-0000-0000-000000000020', v_emp, v_suc, v_med2,
          'd4000000-0000-0000-0000-000000000007',
          'c3000000-0000-0000-0000-000000000001',
-         date_trunc('day',now())+time'09:00', date_trunc('day',now())+time'09:20',
+         v_hoy + interval '9 hours', v_hoy + interval '9 hours 20 minutes',
          'Agendada','confirmada','No pagado', 55000, 'particular',
          'a1000000-0000-0000-0000-000000000003'),
 
         ('99000000-0000-0000-0000-000000000021', v_emp, v_suc, v_med2,
          'd4000000-0000-0000-0000-000000000009',
          'c3000000-0000-0000-0000-000000000015',
-         date_trunc('day',now())+time'10:00', date_trunc('day',now())+time'10:45',
+         v_hoy + interval '10 hours', v_hoy + interval '10 hours 45 minutes',
          'Agendada','no_confirmada','No pagado', 350000, 'fonasa',
          'a1000000-0000-0000-0000-000000000004'),
 
         ('99000000-0000-0000-0000-000000000022', v_emp, v_suc, v_med3,
          'd4000000-0000-0000-0000-000000000005',
          'c3000000-0000-0000-0000-000000000011',
-         date_trunc('day',now())+time'09:00', date_trunc('day',now())+time'09:50',
+         v_hoy + interval '9 hours', v_hoy + interval '9 hours 50 minutes',
          'Agendada','confirmada','No pagado', 580000, 'fonasa',
          'a1000000-0000-0000-0000-000000000001'),
 
@@ -905,48 +917,48 @@ BEGIN
         ('99000000-0000-0000-0000-000000000023', v_emp, v_suc, v_med1,
          'd4000000-0000-0000-0000-000000000011',
          'c3000000-0000-0000-0000-000000000008',
-         date_trunc('week',now())+interval'7 days'+time'07:30',
-         date_trunc('week',now())+interval'7 days'+time'09:30',
+         v_sem + interval '7 days 7 hours 30 minutes',
+         v_sem + interval '7 days 9 hours 30 minutes',
          'Agendada','no_confirmada','No pagado', 2500000, 'fonasa',
          'a1000000-0000-0000-0000-000000000001'),
 
         ('99000000-0000-0000-0000-000000000024', v_emp, v_suc, v_med1,
          'd4000000-0000-0000-0000-000000000006',
          'c3000000-0000-0000-0000-000000000006',
-         date_trunc('week',now())+interval'8 days'+time'09:00',
-         date_trunc('week',now())+interval'8 days'+time'09:45',
+         v_sem + interval '8 days 9 hours',
+         v_sem + interval '8 days 9 hours 45 minutes',
          'Agendada','confirmada','No pagado', 890000, 'fonasa',
          'a1000000-0000-0000-0000-000000000004'),
 
         ('99000000-0000-0000-0000-000000000025', v_emp, v_suc, v_med2,
          'd4000000-0000-0000-0000-000000000012',
          'c3000000-0000-0000-0000-000000000001',
-         date_trunc('week',now())+interval'9 days'+time'08:30',
-         date_trunc('week',now())+interval'9 days'+time'08:50',
+         v_sem + interval '9 days 8 hours 30 minutes',
+         v_sem + interval '9 days 8 hours 50 minutes',
          'Agendada','no_confirmada','No pagado', 55000, 'isapre_colmena',
          'a1000000-0000-0000-0000-000000000003'),
 
         ('99000000-0000-0000-0000-000000000026', v_emp, v_suc, v_med1,
          'd4000000-0000-0000-0000-000000000002',
          'c3000000-0000-0000-0000-000000000010',
-         date_trunc('week',now())+interval'9 days'+time'10:00',
-         date_trunc('week',now())+interval'9 days'+time'10:15',
+         v_sem + interval '9 days 10 hours',
+         v_sem + interval '9 days 10 hours 15 minutes',
          'Agendada','confirmada','No pagado', 30000, 'isapre_banmedica',
          'a1000000-0000-0000-0000-000000000002'),
 
         ('99000000-0000-0000-0000-000000000027', v_emp, v_suc, v_med2,
          'd4000000-0000-0000-0000-000000000004',
          'c3000000-0000-0000-0000-000000000011',
-         date_trunc('week',now())+interval'10 days'+time'08:00',
-         date_trunc('week',now())+interval'10 days'+time'08:50',
+         v_sem + interval '10 days 8 hours',
+         v_sem + interval '10 days 8 hours 50 minutes',
          'Agendada','confirmada','No pagado', 580000, 'isapre_colmena',
          'a1000000-0000-0000-0000-000000000001'),
 
         ('99000000-0000-0000-0000-000000000028', v_emp, v_suc, v_med1,
          'd4000000-0000-0000-0000-000000000010',
          'c3000000-0000-0000-0000-000000000001',
-         date_trunc('week',now())+interval'11 days'+time'08:00',
-         date_trunc('week',now())+interval'11 days'+time'08:20',
+         v_sem + interval '11 days 8 hours',
+         v_sem + interval '11 days 8 hours 20 minutes',
          'Agendada','no_confirmada','No pagado', 50000, 'isapre_banmedica',
          'a1000000-0000-0000-0000-000000000002');
 
@@ -994,7 +1006,7 @@ DECLARE
     v_asistente UUID;
 BEGIN
     SELECT id INTO v_asistente FROM public.mpaci_usuarios
-    WHERE email = 'sditecnologiachile@gmail.com'
+    WHERE email = 'asistenteclinicaurbamed@gmail.com'
     AND empresa_id = 'd837f400-60b5-4b53-b0df-2b9a71b12345' LIMIT 1;
 
     IF v_asistente IS NULL THEN
@@ -1450,7 +1462,14 @@ DECLARE
     v_med1 UUID;
     v_med3 UUID := 'b2000000-0000-0000-0000-000000000001';
     v_admin UUID;
+    v_hoy  TIMESTAMPTZ;
+    v_sem  TIMESTAMPTZ;
 BEGIN
+    v_hoy := timezone('America/Santiago', current_date::timestamp);
+    v_sem  := timezone('America/Santiago',
+        date_trunc('week', (current_timestamp AT TIME ZONE 'America/Santiago'))::timestamp
+    );
+
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
     WHERE email = 'mipaciente.demo@gmail.com' AND empresa_id = v_emp LIMIT 1;
     IF v_med1 IS NULL THEN v_med1 := v_med3; END IF;
@@ -1464,60 +1483,60 @@ BEGIN
     VALUES
         -- Bloque mañana hace 28 días (confirmado — URS + consulta)
         (v_emp, v_med1, v_suc,
-         (now()-interval'28 days')::date,
+         (current_date - interval '28 days')::date,
          tstzrange(
-             date_trunc('day', now()-interval'28 days') + time'08:00',
-             date_trunc('day', now()-interval'28 days') + time'13:00'
+             timezone('America/Santiago', (current_date - interval '28 days')::timestamp) + interval '8 hours',
+             timezone('America/Santiago', (current_date - interval '28 days')::timestamp) + interval '13 hours'
          ),
          137500, 'confirmado',
          now()-interval'27 days', v_admin),
 
         -- Bloque tarde hace 25 días (confirmado — URS Ricardo Peña)
         (v_emp, v_med1, v_suc,
-         (now()-interval'25 days')::date,
+         (current_date - interval '25 days')::date,
          tstzrange(
-             date_trunc('day', now()-interval'25 days') + time'08:00',
-             date_trunc('day', now()-interval'25 days') + time'13:00'
+             timezone('America/Santiago', (current_date - interval '25 days')::timestamp) + interval '8 hours',
+             timezone('America/Santiago', (current_date - interval '25 days')::timestamp) + interval '13 hours'
          ),
          137500, 'confirmado',
          now()-interval'24 days', v_admin),
 
         -- Bloque hace 18 días (confirmado — Vasectomía Felipe Castro)
         (v_emp, v_med1, v_suc,
-         (now()-interval'18 days')::date,
+         (current_date - interval '18 days')::date,
          tstzrange(
-             date_trunc('day', now()-interval'18 days') + time'08:00',
-             date_trunc('day', now()-interval'18 days') + time'13:00'
+             timezone('America/Santiago', (current_date - interval '18 days')::timestamp) + interval '8 hours',
+             timezone('America/Santiago', (current_date - interval '18 days')::timestamp) + interval '13 hours'
          ),
          137500, 'confirmado',
          now()-interval'17 days', v_admin),
 
         -- Bloque hace 15 días (confirmado — Biopsia fusión)
         (v_emp, v_med1, v_suc,
-         (now()-interval'15 days')::date,
+         (current_date - interval '15 days')::date,
          tstzrange(
-             date_trunc('day', now()-interval'15 days') + time'08:00',
-             date_trunc('day', now()-interval'15 days') + time'13:00'
+             timezone('America/Santiago', (current_date - interval '15 days')::timestamp) + interval '8 hours',
+             timezone('America/Santiago', (current_date - interval '15 days')::timestamp) + interval '13 hours'
          ),
          137500, 'confirmado',
          now()-interval'14 days', v_admin),
 
         -- Bloque HOY mañana (pendiente confirmación — Rezum + HoLEP)
         (v_emp, v_med1, v_suc,
-         date_trunc('day', now())::date,
+         current_date,
          tstzrange(
-             date_trunc('day', now()) + time'08:00',
-             date_trunc('day', now()) + time'13:00'
+             v_hoy + interval '8 hours',
+             v_hoy + interval '13 hours'
          ),
          137500, 'pendiente_confirmacion',
          NULL, NULL),
 
         -- Bloque próxima semana (auto generado — NLP Héctor Gutiérrez)
         (v_emp, v_med1, v_suc,
-         (date_trunc('week', now()) + interval'7 days')::date,
+         (v_sem + interval '7 days')::date,
          tstzrange(
-             date_trunc('week', now()) + interval'7 days' + time'07:30',
-             date_trunc('week', now()) + interval'7 days' + time'13:30'
+             v_sem + interval '7 days 7 hours 30 minutes',
+             v_sem + interval '7 days 13 hours 30 minutes'
          ),
          137500, 'auto',
          NULL, NULL);
@@ -1548,7 +1567,7 @@ DECLARE
     v_p8 UUID := 'aa000000-0000-0000-0000-000000000008';
 BEGIN
     SELECT id INTO v_asistente FROM public.mpaci_usuarios
-    WHERE email = 'sditecnologiachile@gmail.com' AND empresa_id = v_emp LIMIT 1;
+    WHERE email = 'asistenteclinicaurbamed@gmail.com' AND empresa_id = v_emp LIMIT 1;
     IF v_asistente IS NULL THEN v_asistente := 'b2000000-0000-0000-0000-000000000002'; END IF;
 
     SELECT id INTO v_med1 FROM public.mpaci_usuarios
@@ -1726,7 +1745,10 @@ DECLARE
     v_suc  UUID := 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
     v_med2 UUID;
     v_med3 UUID := 'b2000000-0000-0000-0000-000000000001';
+    v_hoy  TIMESTAMPTZ;
 BEGIN
+    v_hoy := timezone('America/Santiago', current_date::timestamp);
+
     SELECT id INTO v_med2 FROM public.mpaci_usuarios
     WHERE email = 'caltamirano@manmec.cl' AND empresa_id = v_emp LIMIT 1;
     IF v_med2 IS NULL THEN v_med2 := v_med3; END IF;
@@ -1742,8 +1764,8 @@ BEGIN
          v_emp, v_suc, v_med2,
          'd4000000-0000-0000-0000-000000000007',
          'c3000000-0000-0000-0000-000000000014',
-         date_trunc('day', now()) + interval'15 days' + time'07:30',
-         date_trunc('day', now()) + interval'15 days' + time'09:00',
+         v_hoy + interval '15 days 7 hours 30 minutes',
+         v_hoy + interval '15 days 9 hours',
          'Agendada', 'confirmada', 'Pago parcial',
          1500000, 'isapre_cruz_blanca',
          'a1000000-0000-0000-0000-000000000001'),
@@ -1753,8 +1775,8 @@ BEGIN
          v_emp, v_suc, v_med2,
          'd4000000-0000-0000-0000-000000000012',
          'c3000000-0000-0000-0000-000000000017',
-         date_trunc('day', now()) + interval'20 days' + time'08:00',
-         date_trunc('day', now()) + interval'20 days' + time'08:45',
+         v_hoy + interval '20 days 8 hours',
+         v_hoy + interval '20 days 8 hours 45 minutes',
          'Agendada', 'no_confirmada', 'No pagado',
          580000, 'isapre_colmena',
          'a1000000-0000-0000-0000-000000000001');
