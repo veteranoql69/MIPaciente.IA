@@ -122,7 +122,9 @@ export async function proxy(request: NextRequest) {
     }
 
     const target =
-      ['medico', 'asistente', 'enfermera_tens', 'externo'].includes(profile.rol)
+      profile.rol === 'asistente'
+        ? `/${empresa.slug}/agenda/recepcion`
+        : ['medico', 'enfermera_tens', 'externo'].includes(profile.rol)
         ? `/${empresa.slug}/agenda/hoy`
         : `/${empresa.slug}/dashboard`
 
@@ -143,6 +145,27 @@ export async function proxy(request: NextRequest) {
 
     if (!empresa || !empresa.activo) {
       return NextResponse.redirect(new URL('/unauthorized', request.url))
+    }
+
+    // /configuracion is restricted to admin_general
+    if (pathname.includes('/configuracion')) {
+      if (profile.rol !== 'admin_general') {
+        return NextResponse.redirect(new URL(`/${empresaSlug}/dashboard`, request.url))
+      }
+    }
+
+    // agenda/hoy is not for asistente — redirect to recepcion
+    if (pathname.includes('/agenda/hoy') && profile.rol === 'asistente') {
+      return NextResponse.redirect(new URL(`/${empresaSlug}/agenda/recepcion`, request.url))
+    }
+
+    // /agenda/recepcion/semana y /mes solo para roles con acceso a recepcion
+    const recepcionRoles = ['asistente', 'admin', 'admin_general']
+    if (
+      (pathname.includes('/agenda/recepcion/semana') || pathname.includes('/agenda/recepcion/mes')) &&
+      !recepcionRoles.includes(profile.rol)
+    ) {
+      return NextResponse.redirect(new URL(`/${empresaSlug}/agenda/hoy`, request.url))
     }
   }
 

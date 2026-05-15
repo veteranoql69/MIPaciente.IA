@@ -46,9 +46,9 @@ type Props = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatTime(iso: string, tz: string) {
-  return new Date(iso).toLocaleTimeString('es-CL', {
-    hour: '2-digit', minute: '2-digit', timeZone: tz,
-  })
+  return new Intl.DateTimeFormat('es-CL', {
+    hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false,
+  }).format(new Date(iso))
 }
 
 function calcEdad(fechaNacimiento: string | null): string {

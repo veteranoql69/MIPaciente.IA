@@ -312,6 +312,152 @@ export async function getAntecedentesMap(
   return result
 }
 
+// ─── Tipos vista Recepción ───────────────────────────────────────────────────
+
+export type CitaRecepcion = {
+  id: string
+  fecha_inicio: string
+  fecha_fin: string
+  estado_operativo: string
+  estado_confirmacion: string
+  estado_pago: string
+  precio_base: number
+  medico: { id: string; nombre_completo: string } | null
+  contacto: {
+    id: string
+    nombre: string
+    rut: string | null
+    telefono: string | null
+    email: string | null
+    prevision: string | null
+  } | null
+  servicio: { id: string; nombre: string; duracion_minutos: number } | null
+  sala: { id: string; nombre: string } | null
+}
+
+export type MedicoRecepcion = {
+  id: string
+  nombre_completo: string
+}
+
+export async function getMedicosRecepcion(
+  empresaId: string,
+  usuarioId: string,
+  rol: AppRole
+): Promise<MedicoRecepcion[]> {
+  const supabase = await createClient()
+
+  if (rol === 'asistente') {
+    const { data: asignaciones } = await supabase
+      .from('mpaci_asignaciones_medico')
+      .select('medico_id')
+      .eq('asistente_id', usuarioId)
+      .eq('activo', true)
+
+    const ids = (asignaciones ?? []).map(a => a.medico_id)
+    if (ids.length === 0) return []
+
+    const { data } = await supabase
+      .from('mpaci_usuarios')
+      .select('id, nombre_completo')
+      .eq('empresa_id', empresaId)
+      .in('id', ids)
+      .order('nombre_completo')
+
+    return (data ?? []) as MedicoRecepcion[]
+  }
+
+  // admin / admin_general → todos los médicos activos
+  const { data } = await supabase
+    .from('mpaci_usuarios')
+    .select('id, nombre_completo')
+    .eq('empresa_id', empresaId)
+    .in('rol', ['medico', 'externo'])
+    .order('nombre_completo')
+
+  return (data ?? []) as MedicoRecepcion[]
+}
+
+export async function getCitasRecepcion(
+  empresaId: string,
+  medicosIds: string[],
+  fecha: string,
+  timezone = 'America/Santiago'
+): Promise<CitaRecepcion[]> {
+  if (medicosIds.length === 0) return []
+
+  const supabase = await createClient()
+  const { DateTime } = await import('luxon')
+
+  const dt = DateTime.fromISO(fecha, { zone: timezone })
+  const inicio = dt.startOf('day').toUTC().toISO()!
+  const fin    = dt.plus({ days: 1 }).startOf('day').toUTC().toISO()!
+
+  const { data, error } = await supabase
+    .from('mpaci_citas')
+    .select(`
+      id, fecha_inicio, fecha_fin,
+      estado_operativo, estado_confirmacion, estado_pago,
+      precio_base,
+      medico:medico_id(id, nombre_completo),
+      contacto:contacto_id(id, nombre, rut, telefono, email, prevision),
+      servicio:servicio_id(id, nombre, duracion_minutos),
+      sala:sala_id(id, nombre)
+    `)
+    .eq('empresa_id', empresaId)
+    .in('medico_id', medicosIds)
+    .gte('fecha_inicio', inicio)
+    .lt('fecha_inicio', fin)
+    .order('fecha_inicio', { ascending: true })
+
+  if (error) {
+    console.error('[getCitasRecepcion]', error.message)
+    return []
+  }
+
+  return (data ?? []) as unknown as CitaRecepcion[]
+}
+
+export async function getCitasRecepcionRango(
+  empresaId: string,
+  medicosIds: string[],
+  fechaInicio: string,
+  fechaFin: string,
+  timezone = 'America/Santiago'
+): Promise<CitaRecepcion[]> {
+  if (medicosIds.length === 0) return []
+
+  const supabase = await createClient()
+  const { DateTime } = await import('luxon')
+
+  const inicio = DateTime.fromISO(fechaInicio, { zone: timezone }).startOf('day').toUTC().toISO()!
+  const fin    = DateTime.fromISO(fechaFin,    { zone: timezone }).startOf('day').toUTC().toISO()!
+
+  const { data, error } = await supabase
+    .from('mpaci_citas')
+    .select(`
+      id, fecha_inicio, fecha_fin,
+      estado_operativo, estado_confirmacion, estado_pago,
+      precio_base,
+      medico:medico_id(id, nombre_completo),
+      contacto:contacto_id(id, nombre, rut, telefono, email, prevision),
+      servicio:servicio_id(id, nombre, duracion_minutos),
+      sala:sala_id(id, nombre)
+    `)
+    .eq('empresa_id', empresaId)
+    .in('medico_id', medicosIds)
+    .gte('fecha_inicio', inicio)
+    .lt('fecha_inicio', fin)
+    .order('fecha_inicio', { ascending: true })
+
+  if (error) {
+    console.error('[getCitasRecepcionRango]', error.message)
+    return []
+  }
+
+  return (data ?? []) as unknown as CitaRecepcion[]
+}
+
 // ─── Antecedente único (para actualización live en cliente) ──────────────────
 
 export async function getAntecedenteUnico(

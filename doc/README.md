@@ -4,6 +4,9 @@ Bienvenido a la carpeta de documentación oficial de **Mi-Paciente.com**. Esta d
 
 ## Índice de Documentación
 
+0. [Guía de Onboarding para Desarrolladores](00_onboarding_guide.md)
+   Punto de entrada principal para nuevos contribuidores y resumen arquitectónico.
+
 1. [Arquitectura y Stack Tecnológico](01_architecture_and_stack.md)
    Información sobre las herramientas utilizadas, integraciones de IA (Vercel AI SDK) y metodologías.
    
@@ -25,5 +28,8 @@ Bienvenido a la carpeta de documentación oficial de **Mi-Paciente.com**. Esta d
 7. [Control AI con Langfuse](07_langfuse_ai_control.md)
    Estrategia de desacoplamiento de IA, gestión de prompts y observabilidad.
 
+8. [Configuración Clínica y Plantillas](08_configuracion_clinica.md)
+   Gestión de identidad, servicios, sedes y plantillas dinámicas de documentos.
+
 ---
-**Nota:** Estos documentos reflejan el estado de diseño y desarrollo del proyecto (Actualizado al 11 de Mayo, 2026). Cualquier cambio arquitectónico, regla de negocio o adición de modelos debe actualizarse directamente en los archivos correspondientes.
+**Nota:** Estos documentos reflejan el estado de diseño y desarrollo del proyecto (Actualizado al 14 de Mayo, 2026). Cualquier cambio arquitectónico, regla de negocio o adición de modelos debe actualizarse directamente en los archivos correspondientes.

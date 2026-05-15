@@ -480,18 +480,173 @@ export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) 
     day: '2-digit', month: 'long', year: 'numeric',
   })
 
-  const cuidadosLista = (ficha.examenes_solicitados ?? [])
-    .map((c: string) => `<li>${c}</li>`).join('')
+  // ── Fetch empresa identidad + plantilla en paralelo ───────────────────────
+  const servicioId = servicio?.id as string | undefined
 
-  const consentimiento = (servicio?.plantilla_consentimiento ?? '')
-    .replace(/{{nombre_paciente}}/g, contacto?.nombre ?? '—')
-    .replace(/{{rut_paciente}}/g, contacto?.rut ?? '—')
-    .replace(/{{nombre_medico}}/g, medico?.nombre_completo ?? '—')
-    .replace(/{{rut_medico}}/g, '—')
-    .replace(/{{fecha}}/g, fechaFormateada)
-    .replace(/\n/g, '<br>')
+  const [empresaRes, plantillaEspecificaRes] = await Promise.all([
+    (supabase as any)
+      .from('mpaci_empresas')
+      .select('nombre, logo_url, email_clinica, telefono_clinica, direccion_clinica')
+      .eq('id', usuario.empresa_id)
+      .single(),
+    servicioId
+      ? (supabase as any)
+          .from('mpaci_plantillas_documentos')
+          .select('*')
+          .eq('empresa_id', usuario.empresa_id)
+          .eq('tipo', 'protocolo')
+          .eq('activo', true)
+          .eq('servicio_id', servicioId)
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
 
-  const html = `<!DOCTYPE html>
+  // Si no hay plantilla específica para el servicio, buscar genérica de tipo protocolo
+  let plantilla = plantillaEspecificaRes.data
+  if (!plantilla) {
+    const { data: generica } = await (supabase as any)
+      .from('mpaci_plantillas_documentos')
+      .select('*')
+      .eq('empresa_id', usuario.empresa_id)
+      .eq('tipo', 'protocolo')
+      .eq('activo', true)
+      .is('servicio_id', null)
+      .order('creado_en', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    plantilla = generica
+  }
+
+  const empresa = empresaRes.data as {
+    nombre: string
+    logo_url: string | null
+    email_clinica: string | null
+    telefono_clinica: string | null
+    direccion_clinica: string | null
+  } | null
+
+  // ── Mapa de variables para resolución de plantillas ───────────────────────
+  const varMap: Record<string, string> = {
+    '{{clinica_nombre}}':     empresa?.nombre ?? '—',
+    '{{clinica_telefono}}':   empresa?.telefono_clinica ?? '',
+    '{{clinica_direccion}}':  empresa?.direccion_clinica ?? '',
+    '{{medico_nombre}}':      medico?.nombre_completo ?? '—',
+    '{{paciente_nombre}}':    contacto.nombre,
+    '{{paciente_rut}}':       contacto.rut ?? '—',
+    '{{paciente_edad}}':      '—',
+    '{{fecha_hoy}}':          fechaFormateada,
+    '{{servicio_nombre}}':    servicio?.nombre ?? '—',
+    '{{cita_fecha}}':         fechaFormateada,
+    '{{diagnostico}}':        ficha.contenido_texto ?? '',
+    '{{hallazgos}}':          '',
+    '{{tecnica_quirurgica}}': '',
+    '{{anestesia}}':          '',
+    '{{complicaciones}}':     '',
+    // Compat con variable legacy de plantilla_consentimiento
+    '{{nombre_paciente}}':    contacto.nombre,
+    '{{rut_paciente}}':       contacto.rut ?? '—',
+    '{{nombre_medico}}':      medico?.nombre_completo ?? '—',
+    '{{rut_medico}}':         '—',
+    '{{fecha}}':              fechaFormateada,
+  }
+
+  const resolveVars = (text: string) =>
+    Object.entries(varMap).reduce((s, [k, v]) => s.split(k).join(v), text)
+
+  // ── Construcción del HTML ─────────────────────────────────────────────────
+  let html: string
+
+  if (plantilla) {
+    // HTML dinámico a partir de la plantilla configurada en Configuración → Plantillas
+    const header = (plantilla.contenido?.header ?? {}) as Record<string, boolean>
+    const secciones = (plantilla.contenido?.secciones ?? []) as { titulo: string; cuerpo: string }[]
+
+    const logoHtml = (header.mostrar_logo && empresa?.logo_url)
+      ? `<img src="${empresa.logo_url}" alt="Logo" style="max-height:60px;max-width:200px;object-fit:contain;display:block;">`
+      : ''
+
+    const clinicaNombreHtml = header.mostrar_nombre_clinica
+      ? `<p style="font-size:14px;font-weight:bold;color:#1e3a5f;margin:6px 0 2px">${empresa?.nombre ?? ''}</p>`
+      : ''
+
+    const seccionesHtml = secciones
+      .map(sec => `
+        ${sec.titulo ? `<h2>${sec.titulo}</h2>` : ''}
+        <div class="box">${resolveVars(sec.cuerpo).replace(/\n/g, '<br>')}</div>
+      `)
+      .join('')
+
+    const footerLinea = [empresa?.telefono_clinica, empresa?.direccion_clinica]
+      .filter(Boolean).join(' · ')
+
+    html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; margin: 40px; }
+  h1 { font-size: 16px; color: #1e3a5f; border-bottom: 2px solid #1e3a5f; padding-bottom: 6px; margin: 4px 0 8px; }
+  h2 { font-size: 13px; color: #1e3a5f; margin-top: 20px; }
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0; }
+  .header-logo { display: flex; align-items: center; gap: 16px; }
+  .badge { background: #f0f4ff; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 4px; font-size: 11px; }
+  .box { border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin: 10px 0; white-space: pre-wrap; line-height: 1.6; }
+  .firma { display: flex; justify-content: space-around; margin-top: 56px; }
+  .firma-item { text-align: center; }
+  .firma-linea { border-top: 1px solid #64748b; width: 200px; margin: 0 auto; padding-top: 6px; font-size: 11px; color: #64748b; }
+  .footer { margin-top: 32px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <div class="doc-header">
+    <div class="header-logo">
+      ${logoHtml}
+      <div>
+        ${clinicaNombreHtml}
+        <h1>${plantilla.nombre}</h1>
+        <p style="margin:2px 0"><strong>Procedimiento:</strong> ${servicio?.nombre ?? '—'}</p>
+      </div>
+    </div>
+    <div style="text-align:right;min-width:160px">
+      ${header.mostrar_fecha !== false ? `<div class="badge">Fecha: ${fechaFormateada}</div>` : ''}
+      ${header.mostrar_medico !== false ? `<p style="margin-top:6px"><strong>Médico:</strong> ${medico?.nombre_completo ?? '—'}</p>` : ''}
+    </div>
+  </div>
+
+  <h2>Datos del Paciente</h2>
+  <div class="box">
+    <strong>${contacto.nombre}</strong><br>
+    RUT: ${contacto.rut ?? '—'}
+  </div>
+
+  ${seccionesHtml}
+
+  <div class="firma">
+    <div class="firma-item">
+      <div class="firma-linea">Firma del Médico<br>${medico?.nombre_completo ?? ''}</div>
+    </div>
+    <div class="firma-item">
+      <div class="firma-linea">Firma del Paciente<br>${contacto.nombre}</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    ${footerLinea ? `${footerLinea} · ` : ''}Documento generado el ${new Date().toLocaleString('es-CL')} — Mi-Paciente
+  </div>
+</body>
+</html>`
+
+  } else {
+    // Fallback: HTML genérico cuando no hay ninguna plantilla configurada
+    const cuidadosLista = (ficha.examenes_solicitados ?? [])
+      .map((c: string) => `<li>${c}</li>`).join('')
+
+    const consentimiento = resolveVars(
+      (servicio?.plantilla_consentimiento ?? '').replace(/\n/g, '<br>')
+    )
+
+    html = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -525,8 +680,8 @@ export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) 
 
   <h2>Datos del Paciente</h2>
   <div class="box">
-    <strong>${contacto?.nombre ?? '—'}</strong><br>
-    RUT: ${contacto?.rut ?? '—'}
+    <strong>${contacto.nombre}</strong><br>
+    RUT: ${contacto.rut ?? '—'}
   </div>
 
   ${servicio?.descripcion_procedimiento ? `
@@ -554,13 +709,14 @@ export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) 
       <div class="firma-linea">Firma del Médico<br>${medico?.nombre_completo ?? ''}</div>
     </div>
     <div class="firma-item">
-      <div class="firma-linea">Firma del Paciente<br>${contacto?.nombre ?? ''}</div>
+      <div class="firma-linea">Firma del Paciente<br>${contacto.nombre}</div>
     </div>
   </div>
 
   <div class="footer">Documento generado el ${new Date().toLocaleString('es-CL')} — Mi-Paciente</div>
 </body>
 </html>`
+  }
 
   // POST a Stirling PDF
   let pdfBuffer: ArrayBuffer
@@ -629,8 +785,7 @@ export async function generarProtocoloPDF(fichaId: string, empresaSlug: string) 
   return { 
     success: true, 
     url: publicUrl.publicUrl, 
-    fileName, 
-    base64: Buffer.from(pdfBuffer).toString('base64') 
+    fileName
   }
 }
 

@@ -18,7 +18,7 @@ El proyecto avanza hacia la integración profunda entre el módulo de Agenda y l
 | **S3** | Días 31-45 | **Agenda (1ra Parte): Disposiciones y DB** | ✅ Listo | ✅ Listo | **COMPLETADO** |
 | **S4** | Días 46-60 | **Agenda (2da Parte): Semanal, Mes y Nueva Cita** | ✅ Listo | ✅ Listo | **COMPLETADO** |
 | **S5** | Días 61-75 | **Kanban y CRM** | 🟡 Parcial| 🟡 Parcial | **EN PROCESO** |
-| **S6** | Días 76-90 | **Ficha Clínica y Firma PDFs** | ✅ Listo | ✅ Listo | **COMPLETADO (Adelantado)** |
+| **S6** | Días 76-90 | **Ficha Clínica y Documentos** | ✅ Listo | ✅ Listo | **COMPLETADO** |
 | **S7** | Días 91-105 | **Ingesta de Lead (Omnicanal)** | ⏳ Pend. | ⏳ Pend. | Pendiente |
 | **S8** | Días 106-120 | **AI Chat - Agente Part 1** | — | ⏳ Pend. | Pendiente |
 | **S9** | Días 121-135 | **AI Tools - Agente Part 2** | — | ⏳ Pend. | Pendiente |
@@ -87,10 +87,12 @@ Multi-tenant, onboarding, agenda base y fix definitivo de recursión RLS (`supab
 - Pipelines de ventas Kanban y CRM (`mpaci_prospectos`).
 - Vista Kanban de estados de prospecto.
 
-### Sprint 6 — Parcialmente iniciado
+### Sprint 6 — COMPLETADO: Ficha Clínica y Documentos
 
 - Generación PDF completa (Stirling PDF) ✅ implementado en `generarProtocoloPDF`.
-- Firma digital pendiente.
+- **Plantillas de Documentos (Recetas, Protocolos, Consentimientos):** ✅ Implementado con JSONB configurable (`mpaci_plantillas_documentos`).
+- **Identidad Corporativa:** Logo, dirección y datos de clínica dinámicos por empresa en `mpaci_empresas`.
+- **Bucket empresa-assets:** Almacenamiento dedicado para logos de clínicas.
 - Historial clínico completo por paciente (vista dedicada).
 
 ## Referencias
@@ -99,6 +101,7 @@ Multi-tenant, onboarding, agenda base y fix definitivo de recursión RLS (`supab
 - Fix timezone reset_demo (`supabase/migrations/00054_fix_reset_demo_tz.sql`)
 - contacto_id en fichas (`supabase/migrations/00055_fichas_clinicas_contacto_id.sql`)
 - RLS INSERT/UPDATE mpaci_citas (`supabase/migrations/00056_citas_rls_insert_update.sql`)
+- Plantillas Documentos (`supabase/migrations/00058_plantillas_documentos.sql`)
 - Capa de fechas luxon (`src/lib/dates.ts`)
 - Fix Final Recursión RLS (`supabase/migrations/00050_fix_usuarios_rls_final.sql:10`)
 - Seed Data Staging (`doc/reset_and_seed_staging.sql:1`)

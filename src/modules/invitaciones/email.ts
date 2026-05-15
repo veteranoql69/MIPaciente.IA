@@ -1,18 +1,6 @@
 import { Resend } from 'resend'
-import fs from 'fs'
-import path from 'path'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-
-function logDebug(msg: string) {
-  const logPath = path.join(process.cwd(), 'doc', 'proxy_debug.log')
-  const timestamp = new Date().toISOString()
-  try {
-    fs.appendFileSync(logPath, `[${timestamp}] ${msg}\n`)
-  } catch (e) {
-    console.error('Failed to write log:', e)
-  }
-}
 
 const FROM = 'Mi-Paciente <noreply@noreply.sditecnologia.cl>'
 
@@ -46,25 +34,15 @@ export async function sendInvitationEmail({
 
   const html = buildEmailHtml({ clinicName, inviterName, rolLabel, codigoDisplay })
 
-  logDebug(`[Email] Sending invitation to ${to} for clinic ${clinicName}...`)
+  const response = await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `${inviterName} te invitó a unirte a ${clinicName} en Mi-Paciente`,
+    html,
+  })
 
-  try {
-    const response = await resend.emails.send({
-      from: FROM,
-      to,
-      subject: `${inviterName} te invitó a unirte a ${clinicName} en Mi-Paciente`,
-      html,
-    })
-
-    if (response.error) {
-      logDebug(`[Email] Resend error for ${to}: ${JSON.stringify(response.error)}`)
-      throw new Error(`Resend error: ${response.error.message}`)
-    }
-
-    logDebug(`[Email] Success! Message ID: ${response.data?.id} sent to ${to}`)
-  } catch (err: any) {
-    logDebug(`[Email] CRITICAL failure sending to ${to}: ${err.message}`)
-    throw err
+  if (response.error) {
+    throw new Error(`Resend error: ${response.error.message}`)
   }
 }
 

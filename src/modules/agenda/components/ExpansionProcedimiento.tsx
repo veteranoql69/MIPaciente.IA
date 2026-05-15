@@ -102,32 +102,31 @@ export function ExpansionProcedimiento({ cita, antecedente, empresaSlug, onSaved
       setPdfUrl(res.url ?? null)
 
       // ── Forzar descarga automática ────────────────────────────────────
-      if (res.base64) {
-        const byteCharacters = atob(res.base64)
-        const byteNumbers = new Array(byteCharacters.length)
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i)
+      if (res.url) {
+        try {
+          const fileResp = await fetch(res.url)
+          if (!fileResp.ok) throw new Error('Network response was not ok')
+          const blob = await fileResp.blob()
+          const blobUrl = URL.createObjectURL(blob)
+          
+          const a = document.createElement('a')
+          a.href = blobUrl
+          a.download = res.fileName ?? `Protocolo_${fichaId}.pdf`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+        } catch (err) {
+          console.warn('Fallback a descarga directa:', err)
+          const downloadUrl = res.url.includes('?') ? `${res.url}&download=` : `${res.url}?download=`
+          const a = document.createElement('a')
+          a.href = downloadUrl
+          a.target = '_blank'
+          a.download = res.fileName ?? `Protocolo_${fichaId}.pdf`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
         }
-        const byteArray = new Uint8Array(byteNumbers)
-        const blob = new Blob([byteArray], { type: 'application/pdf' })
-        const blobUrl = URL.createObjectURL(blob)
-        
-        const a = document.createElement('a')
-        a.href = blobUrl
-        a.download = res.fileName ?? `Protocolo_${fichaId}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
-      } else if (res.url) {
-        const downloadUrl = res.url.includes('?') ? `${res.url}&download=` : `${res.url}?download=`
-        const a = document.createElement('a')
-        a.href = downloadUrl
-        a.target = '_blank'
-        a.download = res.fileName ?? `Protocolo_${fichaId}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
       }
     })
   }

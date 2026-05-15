@@ -211,3 +211,86 @@ export async function crearCita(input: NuevaCitaInput, empresaSlug: string) {
     return { error: 'Error inesperado al crear la cita' }
   }
 }
+
+// ─── Actualizar estado de cita (recepción) ───────────────────────────────────
+
+const ESTADOS_OPERATIVOS_VALIDOS = [
+  'Agendada', 'Realizada', 'No realizada (presente)', 'No asistió',
+  'Cancelada por clínica', 'Cancelada por paciente dentro de plazo',
+  'Cancelada por paciente fuera de plazo',
+]
+const ESTADOS_PAGO_VALIDOS = ['No pagado', 'Pago parcial', 'Pago total', 'Cortesía', 'Reembolsado']
+const ESTADOS_CONFIRMACION_VALIDOS = ['no_confirmada', 'confirmada']
+
+export async function actualizarEstadoCita(
+  citaId: string,
+  campo: 'estado_operativo' | 'estado_confirmacion' | 'estado_pago',
+  valor: string,
+  empresaSlug: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { ok: false, error: 'No autenticado' }
+
+    const { data: usuario } = await supabase
+      .from('mpaci_usuarios')
+      .select('empresa_id, rol')
+      .eq('id', user.id)
+      .single()
+
+    if (!usuario?.empresa_id) return { ok: false, error: 'Sin empresa' }
+
+    const rolesPermitidos = ['asistente', 'admin', 'admin_general']
+    if (!rolesPermitidos.includes(usuario.rol)) return { ok: false, error: 'Sin permisos' }
+
+    // Validar valor según campo
+    const mapaValidacion: Record<string, string[]> = {
+      estado_operativo:    ESTADOS_OPERATIVOS_VALIDOS,
+      estado_pago:         ESTADOS_PAGO_VALIDOS,
+      estado_confirmacion: ESTADOS_CONFIRMACION_VALIDOS,
+    }
+    if (!mapaValidacion[campo]?.includes(valor)) {
+      return { ok: false, error: `Valor inválido para ${campo}` }
+    }
+
+    // Valor anterior para auditoría
+    const { data: citaActual } = await supabase
+      .from('mpaci_citas')
+      .select('estado_operativo, estado_confirmacion, estado_pago')
+      .eq('id', citaId)
+      .eq('empresa_id', usuario.empresa_id)
+      .single()
+
+    if (!citaActual) return { ok: false, error: 'Cita no encontrada' }
+
+    const admin = createAdminClient()
+
+    const { error } = await admin
+      .from('mpaci_citas')
+      .update({ [campo]: valor })
+      .eq('id', citaId)
+      .eq('empresa_id', usuario.empresa_id)
+
+    if (error) return { ok: false, error: error.message }
+
+    // Auditoría (best-effort)
+    try {
+      await (admin as any)
+        .from('mpaci_auditoria_citas')
+        .insert({
+          cita_id:        citaId,
+          empresa_id:     usuario.empresa_id,
+          tipo_evento:    `cambio_${campo}`,
+          valor_anterior: (citaActual as Record<string, string>)[campo],
+          valor_nuevo:    valor,
+          usuario_id:     user.id,
+        })
+    } catch { /* auditoría no bloquea el flujo */ }
+
+    revalidatePath(`/${empresaSlug}/agenda/recepcion`)
+    return { ok: true }
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error inesperado' }
+  }
+}

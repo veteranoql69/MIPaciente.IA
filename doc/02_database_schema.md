@@ -22,9 +22,12 @@ auth.users (Manejado por Supabase GoTrue Auth interno)
 
 mpaci_empresas (slug LOWERCASE UNIQUE, nombre, plan_suscripcion, activo,
                 bloque_base_min [10,15,20],                            [00039]
-                timezone TEXT DEFAULT 'America/Santiago')              [00053]
+                timezone TEXT DEFAULT 'America/Santiago',              [00053]
+                logo_url, email_clinica, telefono_clinica, direccion)  [00058]
     │
     ├── mpaci_invitaciones (email, rol, codigo, expires_at, usado)           [00046]
+    │
+    ├── mpaci_plantillas_documentos (tipo, nombre, contenido JSONB, activo)  [00058]
     │
     ├── mpaci_sucursales (nombre, direccion, activo)
     │       ├── mpaci_salas (nombre, descripcion, activo)                    [00023]
@@ -178,3 +181,5 @@ Cuando `mpaci_servicios.es_cirugia = true` o `categoria IN ('cirugia','procedimi
 | **00054** | **Fix timezone en reset_demo_staging(): timezone(zone, ts) en lugar de ts AT TIME ZONE zone. El error anterior desplazaba las citas 4h hacia el pasado (UTC vs local).** |
 | **00055** | **contacto_id en mpaci_fichas_clinicas: FK a mpaci_contactos con backfill desde cita_id. Habilita query de fichas por paciente sin JOIN a mpaci_citas. Índice idx_fichas_clinicas_contacto_id.** |
 | **00056** | **RLS INSERT y UPDATE para mpaci_citas: admin/admin_general sin restricción, médico solo su propia agenda, asistente solo médicos asignados en mpaci_asignaciones_medico.** |
+| **00057** | **Fix reset_demo_staging() FK documentos: Corrige error al intentar insertar en mpaci_documentos sin cita_id válido durante el reset.** |
+| **00058** | **Plantillas Documentos: Nueva tabla mpaci_plantillas_documentos para recetas, protocolos y consentimientos personalizados. Añade campos de identidad corporativa a mpaci_empresas y crea bucket empresa-assets.** |

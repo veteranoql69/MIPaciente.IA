@@ -21,11 +21,10 @@ interface NavItem {
 
 const NAV_ITEMS: Record<Rol, NavItem[]> = {
   admin_general: [
-    { label: 'Dashboard',     href: 'dashboard',   icon: LayoutDashboard },
-    { label: 'Agenda de hoy', href: 'agenda/hoy',  icon: Calendar },
-    { label: 'CRM / Prospectos', href: 'crm',      icon: Users,          soon: true },
-    { label: 'Estadísticas',  href: 'estadisticas', icon: BarChart3 },
-    { label: 'Configuración', href: 'configuracion', icon: Settings,      soon: true },
+    { label: 'Dashboard',        href: 'dashboard',    icon: LayoutDashboard },
+    { label: 'Agenda de hoy',    href: 'agenda/hoy',   icon: Calendar },
+    { label: 'CRM / Prospectos', href: 'crm',          icon: Users,      soon: true },
+    { label: 'Estadísticas',     href: 'estadisticas', icon: BarChart3 },
   ],
   admin: [
     { label: 'Dashboard',     href: 'dashboard',   icon: LayoutDashboard },
@@ -43,8 +42,8 @@ const NAV_ITEMS: Record<Rol, NavItem[]> = {
     { label: 'Fichas clínicas', href: 'fichas',    icon: Activity,       soon: true },
   ],
   asistente: [
-    { label: 'Agenda de hoy', href: 'agenda/hoy',  icon: Calendar },
-    { label: 'CRM / Prospectos', href: 'crm',      icon: Users,          soon: true },
+    { label: 'Recepción',        href: 'agenda/recepcion', icon: Calendar },
+    { label: 'CRM / Prospectos', href: 'crm',              icon: Users, soon: true },
   ],
   enfermera_tens: [
     { label: 'Agenda de hoy', href: 'agenda/hoy',  icon: Calendar },
@@ -58,6 +57,7 @@ const NAV_ITEMS: Record<Rol, NavItem[]> = {
 interface Props {
   empresaSlug: string
   empresaNombre: string
+  logoUrl?: string | null
   usuarioNombre: string
   usuarioEmail: string
   rol: Rol
@@ -87,7 +87,7 @@ function NavTooltip({ label, show, children }: { label: string; show: boolean; c
   )
 }
 
-export function SidebarNav({ empresaSlug, empresaNombre, usuarioNombre, usuarioEmail, rol }: Props) {
+export function SidebarNav({ empresaSlug, empresaNombre, logoUrl, usuarioNombre, usuarioEmail, rol }: Props) {
   const pathname  = usePathname()
   const router    = useRouter()
   const items     = NAV_ITEMS[rol] ?? []
@@ -158,10 +158,21 @@ export function SidebarNav({ empresaSlug, empresaNombre, usuarioNombre, usuarioE
           <Link
             href={`/${empresaSlug}/dashboard`}
             onClick={() => setMobileOpen(false)}
-            className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100 shrink-0 hover:bg-indigo-700 transition-colors"
-            title="Mi-Paciente"
+            className="w-9 h-9 rounded-xl shrink-0 overflow-hidden flex items-center justify-center hover:opacity-80 transition-opacity"
+            title={empresaNombre}
           >
-            <Activity className="w-5 h-5 text-white" />
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={empresaNombre}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
+                <Activity className="w-5 h-5 text-white" />
+              </div>
+            )}
           </Link>
           {!collapsed && (
             <div className="min-w-0 overflow-hidden">
@@ -226,6 +237,33 @@ export function SidebarNav({ empresaSlug, empresaNombre, usuarioNombre, usuarioE
             )
           })}
         </nav>
+
+        {/* ── Configuración (solo admin_general) ── */}
+        {rol === 'admin_general' && (
+          <div className="px-2 pb-2">
+            <NavTooltip label="Configuración" show={collapsed}>
+              <Link
+                href={`/${empresaSlug}/configuracion`}
+                onClick={() => setMobileOpen(false)}
+                aria-current={pathname.startsWith(`/${empresaSlug}/configuracion`) ? 'page' : undefined}
+                className={[
+                  'flex items-center gap-3 rounded-2xl transition-all duration-200',
+                  collapsed ? 'px-2.5 py-3 justify-center' : 'px-4 py-3',
+                  pathname.startsWith(`/${empresaSlug}/configuracion`)
+                    ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100/50'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900',
+                ].join(' ')}
+              >
+                <Settings className={`w-5 h-5 shrink-0 ${pathname.startsWith(`/${empresaSlug}/configuracion`) ? 'text-indigo-600' : 'text-slate-400'}`} />
+                {!collapsed && (
+                  <span className={`text-sm whitespace-nowrap ${pathname.startsWith(`/${empresaSlug}/configuracion`) ? 'font-black' : 'font-bold'}`}>
+                    Configuración
+                  </span>
+                )}
+              </Link>
+            </NavTooltip>
+          </div>
+        )}
 
         {/* ── User profile + logout ── */}
         <div className={`border-t border-slate-100 bg-slate-50/50 transition-all duration-300 ${collapsed ? 'p-2 space-y-1' : 'p-3 space-y-1'}`}>

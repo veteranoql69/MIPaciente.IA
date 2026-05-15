@@ -46,6 +46,7 @@ export default async function EmpresaLayout({ params, children }: Props) {
           <SidebarNav
             empresaSlug={empresa_slug}
             empresaNombre={empresa.nombre}
+            logoUrl={(empresa as any).logo_url ?? null}
             usuarioNombre={usuario.nombre_completo}
             usuarioEmail={usuario.email}
             rol={usuario.rol}
